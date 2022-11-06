@@ -17,7 +17,7 @@ FLOAT_VAL   {DIGIT}+("."{DIGIT}+)?([eE][+-]?{DIGIT}+)?
 
 ID          [a-zA-Z][a-zA-Z0-9_]*
 STRING      ["][^\n"]+["]
-WHITESPACE  [ \t]
+WHITESPACE  [ \t]+
 
 EQ          ==
 NE          !=
@@ -44,7 +44,7 @@ VECTOR      vector
 
 %%
 
-{WHITESPACE}
+{WHITESPACE}            { return " "; }
 [/][/]["].*\n
 
 [+-/*=<>;:,()\[\]{}]    { return *yytext; }

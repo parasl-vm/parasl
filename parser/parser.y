@@ -35,17 +35,18 @@
 %}
 
 %union {
-    std::vector<ASTNode *>  args_t;
-    AssignmentNode *        assignment_node_t;
-    CompoundStatementNode * compound_stmt_node_t;
-    ExpressionNode *        expression_node_t;
-    IDNode *                id_node_t;
-    IterationRange *        iter_range_node_t;
-    LayerNode *             layer_node_t;
-    LiteralNode *           literal_node_t;
-    PrimitiveTypeNode *     primitive_type_t;
-    StatementNode *         stmt_node_t;
-    TypeNode *              type_node_t;
+    std::vector<FunctionArgument>   args_decl_t;
+    std::vector<ASTNode *>          args_t;
+    AssignmentNode *                assignment_node_t;
+    CompoundStatementNode *         compound_stmt_node_t;
+    ExpressionNode *                expression_node_t;
+    IDNode *                        id_node_t;
+    IterationRange *                iter_range_node_t;
+    LayerNode *                     layer_node_t;
+    LiteralNode *                   literal_node_t;
+    PrimitiveTypeNode *             primitive_type_t;
+    StatementNode *                 stmt_node_t;
+    TypeNode *                      type_node_t;
 }
 
 %token INT_VAL FLOAT_VAL STRING ID
@@ -54,6 +55,7 @@
 %token IF ELSE WHILE FOR IN RETURN
 %token CHAR INT FLOAT DOUBLE VECTOR
 
+%type<args_decl_t>          ARGS_DECL
 %type<args_t>               ARGS
 %type<assignment_node_t>    ASSIGNMENT
 %type<compound_stmt_node_t> STMTS
@@ -64,7 +66,7 @@
 %type<literal_node_t>       LITERAL INT_VAL FLOAT_VAL STRING
 %type<primitive_type_t>     PRIMITIVE
 %type<stmt_node_t>          STMT STMT1 STMT2
-%type<type_node_t>          OPT_TYPE_DECL TYPE TYPE_DECL
+%type<type_node_t>          OPT_NON_FUNC_TYPE NON_FUNC_TYPE OPT_TYPE_DECL TYPE
 
 %left '+' '-'
 %left '*' '/'
@@ -167,40 +169,62 @@ ITER_RANGE      : ID IN ID
 
 PRIMITIVE       : CHAR
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::CHAR);
+                    $$ = new PrimitiveTypeNode(PrimitiveType::CHAR, {});
                 }
                 | INT
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::INT);
+                    $$ = new PrimitiveTypeNode(PrimitiveType::INT, {});
                 }
                 | FLOAT
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::FLOAT);
+                    $$ = new PrimitiveTypeNode(PrimitiveType::FLOAT, {});
                 }
                 | DOUBLE
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::DOUBLE);
+                    $$ = new PrimitiveTypeNode(PrimitiveType::DOUBLE, {});
                 }
 ;
 
-TYPE            : PRIMITIVE
+TYPE            : NON_FUNC_TYPE
+                | '(' ARGS_DECL ')' OPT_NON_FUNC_TYPE
+                {
+                    $$ = new FunctionTypeNode($4);
+                }
+;
+
+ARGS_DECL       : ID OPT_NON_FUNC_TYPE
+                {
+                    $$.AddArgument($2, $1);
+                }
+                | ARGS_DECL ',' ID OPT_NON_FUNC_TYPE
+                {
+                    $$ = $1;
+                    $$.AddArgument($4, $3);
+                }
+;
+
+OPT_NON_FUNC_TYPE   : %empty
+                    {
+                        $$ = new TypeNode(nullptr);
+                    }
+                    | ':' NON_FUNC_TYPE
+                    {
+                        $$ = $2;
+                    }
+;
+
+NON_FUNC_TYPE   : PRIMITIVE
                 | INT '(' INT_VAL ')'
                 {
                     $$ = new PrimitiveTypeNode(PrimitiveType::INT, $3);
                 }
-                | TYPE '[' INT_VAL ']'
+                | NON_FUNC_TYPE '[' INT_VAL ']'
                 {
                     $$ = new SequenceTypeNode(AggregateType::ARRAY, $1, $3);
                 }
-                | VECTOR '<' TYPE ',' INT_VAL '>'
+                | VECTOR '<' NON_FUNC_TYPE ',' INT_VAL '>'
                 {
                     $$ = new SequenceTypeNode(AggregateType::VECTOR, $3, $5);
-                }
-;
-
-TYPE_DECL       : ':' TYPE
-                {
-                    $$ = $2;
                 }
 ;
 
@@ -208,7 +232,10 @@ OPT_TYPE_DECL   : %empty
                 {
                     $$ = new TypeNode(nullptr);
                 }
-                | TYPE_DECL
+                | ':' TYPE
+                {
+                    $$ = $2;
+                }
 ;
 
 ASSIGNMENT      : ID OPT_TYPE_DECL '=' EXPR ';'
