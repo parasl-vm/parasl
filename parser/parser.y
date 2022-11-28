@@ -1,4 +1,4 @@
-%language "c++"
+// %language "c++"
 
 %define parse.error verbose
 
@@ -22,82 +22,96 @@
     #include "ast/WhileStatementNode.h"
     #include <iostream>
 
-    #undef yylex
-    #define yylex driver.lexer->lex
+    // #undef yylex
+    // #define yylex driver.lexer->lex
 
     extern int yylineno;
     extern int yylex();
+    extern FILE* yyin;
 
-    void yyerror(const char *s) {
-      std::cerr << s << ", line " << yylineno << std::endl;
-      exit(1);
-    }
-%}
-
-%union {
-    std::vector<FunctionArgument>   args_decl_t;
-    std::vector<ASTNode *>          args_t;
-    AssignmentNode *                assignment_node_t;
-    CompoundStatementNode *         compound_stmt_node_t;
-    ExpressionNode *                expression_node_t;
-    IDNode *                        id_node_t;
-    IterationRange *                iter_range_node_t;
-    LayerNode *                     layer_node_t;
-    LiteralNode *                   literal_node_t;
-    PrimitiveTypeNode *             primitive_type_t;
-    StatementNode *                 stmt_node_t;
-    TypeNode *                      type_node_t;
+    void yyerror(const char *s);
 }
 
-%token INT_VAL FLOAT_VAL STRING ID
-%token EQ NE GE LE
-%token LAYER// INPUT OUTPUT REPEAT GLUE BIND
-%token IF ELSE WHILE FOR IN RETURN
-%token CHAR INT FLOAT DOUBLE VECTOR
+%union {
+    // std::vector<FunctionArgument>   args_decl_t;
+    // std::vector<ASTNode *>          args_t;
+    // AssignmentNode *                assignment_node_t;
+    // CompoundStatementNode *         compound_stmt_node_t;
+    // ExpressionNode *                expression_node_t;
+    lexer::IDNode *                        id_node_t;
+    // IterationRange *                iter_range_node_t;
+    // LayerNode *                     layer_node_t;
+    lexer::LiteralNode *                   literal_node_t;
+    // PrimitiveTypeNode *             primitive_type_t;
+    // StatementNode *                 stmt_node_t;
+    lexer::TypeNode *                      type_node_t;
+}
 
-%type<args_decl_t>          ARGS_DECL
-%type<args_t>               ARGS
-%type<assignment_node_t>    ASSIGNMENT
-%type<compound_stmt_node_t> STMTS
-%type<expression_node_t>    EXPR EXPR2 TERM VAL OPT_RET_VAL
+// %token STRING
+%token EQ NE GE LE
+%token LAYER REPEAT GLUE BIND
+%token IF ELSE WHILE FOR IN RETURN
+%token CHAR // lexer::Token::CHAR
+%token INT // lexer::Token::INT
+%token FLOAT // lexer::Token::FLOAT
+%token DOUBLE // lexer::Token::DOUBLE
+%token VECTOR // lexer::Token::VECTOR
+
+
+%token INT_VAL // lexer::Token::INT_VAL
+%token FLOAT_VAL
+%token ID // lexer::Token::ID
+%token INPUT // lexer::Token::INPUT
+%token OUTPUT // lexer::Token::OUTPUT
+
+// %type<args_decl_t>          ARGS_DECL
+// %type<args_t>               ARGS
+// %type<assignment_node_t>    ASSIGNMENT
+// %type<compound_stmt_node_t> STMTS
+// %type<expression_node_t>    EXPR EXPR2 TERM VAL // OPT_RET_VAL
 %type<id_node_t>            ID
-%type<iter_range_node_t>    ITER_RANGE
-%type<layer_node_t>         LAYER_DEF PROGRAM
-%type<literal_node_t>       LITERAL INT_VAL FLOAT_VAL STRING
-%type<primitive_type_t>     PRIMITIVE
-%type<stmt_node_t>          STMT STMT1 STMT2
-%type<type_node_t>          OPT_NON_FUNC_TYPE NON_FUNC_TYPE OPT_TYPE_DECL TYPE
+// %type<iter_range_node_t>    ITER_RANGE
+// %type<layer_node_t>         PROGRAM // LAYER_DEF
+%type<literal_node_t>       LITERAL INT_VAL // STRING FLOAT_VAL
+// %type<primitive_type_t>     PRIMITIVE
+// %type<stmt_node_t>          STMT STMT1 // STMT2
+%type<type_node_t>          NON_FUNC_TYPE OPT_TYPE_DECL TYPE PRIMITIVE // OPT_NON_FUNC_TYPE
 
 %left '+' '-'
 %left '*' '/'
+%left '<' '>'
+%left EQ NE GE LE
 
 %start PROGRAM
 
 %%
 
-PROGRAM         : LAYER_DEF
-                | STMTS
+PROGRAM         : /* LAYER_DEF */
+                STMTS
                 {
-                    $$ = new CompoundStatementNode();
-                    $$ = new LayerNode(0, "", $$);
+                    // $$ = new CompoundStatementNode();
+                    // $$ = new LayerNode(0, "", $$);
+                    std::cout << "[PARSER]: " << "PROGRAM" << std::endl;
                 }
 ;
 
-LAYER_DEF       : LAYER '(' INT_VAL ',' STRING ')' '{' STMTS '}'
-                {
-                    $$ = new CompoundStatementNode();
-                    $$ = new LayerNode($3, $5, $$);
-                }
-;
+// LAYER_DEF       : LAYER '(' INT_VAL ',' STRING ')' '{' STMTS '}'
+//                 {
+//                     $$ = new CompoundStatementNode();
+//                     $$ = new LayerNode($3, $5, $$);
+//                 }
+// ;
 
 STMTS           : STMT
                 {
-                    $$.push_back($1);
+                    // $$.push_back($1);
+                    std::cout << "[PARSER]: " << "STMTS1" << std::endl;
                 }
                 | STMTS STMT
                 {
-                    $$ = $1;
-                    $$.push_back($2);
+                    std::cout << "[PARSER]: " << "STMTS2" << std::endl;
+                    // $$ = $1;
+                    // $$.push_back($2);
                 }
 ;
 
@@ -106,232 +120,319 @@ STMT            : STMT1
 ;
 
 STMT1           : ASSIGNMENT
+                | OUTPUT '(' ARGS ')' ';'
+                {
+                    std::cout << "[PARSER]: OUTPUT ( ARGS ) ;" << std::endl;
+                }
                 | RETURN OPT_RET_VAL ';'
                 {
-                    $$ = new ReturnStatementNode($2);
+                    std::cout << "[PARSER]: RETURN OPT_RET_VAL ;" << std::endl;
+                //     $$ = new ReturnStatementNode($2);
                 }
-                | '{' STMTS '}'
+                | IF '(' EXPR ')' '{' STMTS '}' ELSE '{' STMTS '}'
                 {
-                    $$ = new CompoundStatementNode();
+                    std::cout << "[PARSER]: IF ( EXPR ) { STMTS } ELSE { STMTS }" << std::endl;
+                //     $$ = new IfStatementNode($3, $5, $7);
+                }
+                | IF '(' EXPR ')' '{' STMTS '}' ELSE STMT1
+                {
+                    std::cout << "[PARSER]: IF ( EXPR ) { STMTS } ELSE STMT1" << std::endl;
+                //     $$ = new IfStatementNode($3, $5, $7);
+                }
+                | IF '(' EXPR ')' STMT1 ELSE '{' STMTS '}'
+                {
+                    std::cout << "[PARSER]: IF ( EXPR ) STMT1 ELSE { STMTS }" << std::endl;
+                //     $$ = new IfStatementNode($3, $5, $7);
                 }
                 | IF '(' EXPR ')' STMT1 ELSE STMT1
                 {
-                    $$ = new IfStatementNode($3, $5, $7);
+                    std::cout << "[PARSER]: IF ( EXPR ) STMT1 ELSE STMT1" << std::endl;
+                //     $$ = new IfStatementNode($3, $5, $7);
+                }
+                | WHILE '(' EXPR ')' '{' STMTS '}'
+                {
+                    std::cout << "[PARSER]: WHILE ( EXPR ) { STMTS }" << std::endl;
+                //     $$ = new WhileStatementNode($3, $5);
                 }
                 | WHILE '(' EXPR ')' STMT1
                 {
-                    $$ = new WhileStatementNode($3, $5);
+                    std::cout << "[PARSER]: WHILE ( EXPR ) STMT1" << std::endl;
+                //     $$ = new WhileStatementNode($3, $5);
+                }
+                | FOR '(' ITER_RANGE ')' '{' STMTS '}'
+                {
+                    std::cout << "[PARSER]: FOR ( ITER_RANGE ) { STMTS }" << std::endl;
+                //     $$ = new ForStatementNode($3, $5);
                 }
                 | FOR '(' ITER_RANGE ')' STMT1
                 {
-                    $$ = new ForStatementNode($3, $5);
+                    std::cout << "[PARSER]: FOR ( ITER_RANGE ) STMT1" << std::endl;
+                //     $$ = new ForStatementNode($3, $5);
                 }
 ;
 
-STMT2           : IF '(' EXPR ')' STMT
+STMT2           : IF '(' EXPR ')' OPT_SCOPE
                 {
-                    $$ = new IfStatementNode($3, $5);
+                    std::cout << "[PARSER]: IF ( EXPR ) OPT_SCOPE" << std::endl;
+//                     $$ = new IfStatementNode($3, $5);
                 }
                 | IF '(' EXPR ')' STMT1 ELSE STMT2
                 {
-                    $$ = new IfStatementNode($3, $5, $7);
+                    std::cout << "[PARSER]: IF ( EXPR ) STMT1 ELSE STMT2" << std::endl;
+//                     $$ = new IfStatementNode($3, $5, $7);
                 }
                 | WHILE '(' EXPR ')' STMT2
                 {
-                    $$ = new WhileStatementNode($3, $5);
+                    std::cout << "[PARSER]: WHILE ( EXPR ) STMT2" << std::endl;
+//                     $$ = new WhileStatementNode($3, $5);
                 }
                 | FOR '(' ITER_RANGE ')' STMT2
                 {
-                    $$ = new ForStatementNode($3, $5);
+                    std::cout << "[PARSER]: FOR ( ITER_RANGE ) STMT2" << std::endl;
+//                     $$ = new ForStatementNode($3, $5);
+                }
+;
+
+OPT_SCOPE       : STMT
+                | '{' STMTS '}'
+                {
+                    std::cout << "[PARSER]: { STMTS }" << std::endl;
                 }
 ;
 
 OPT_RET_VAL     : %empty
                 {
-                    $$ = new ExpressionNode(nullptr);
+                    std::cout << "[PARSER]: empty RETURN;" << std::endl;
+                //     $$ = new ExpressionNode(nullptr);
                 }
                 | EXPR
 ;
 
 ITER_RANGE      : ID IN ID
                 {
-                    $$ = new SequenceIterationRange($1, $3);
+                    std::cout << "[PARSER]: ID IN ID" << std::endl;
+                //     $$ = new SequenceIterationRange($1, $3);
                 }
                 | ID IN INT_VAL ':' INT_VAL
                 {
-                    $$ = new NumericIterationRange($1, $3, $5);
+                    std::cout << "[PARSER]: ID IN INT_VAL : INT_VAL" << std::endl;
+                //     $$ = new NumericIterationRange($1, $3, $5);
                 }
                 | ID IN INT_VAL ':' INT_VAL ':' INT_VAL
                 {
-                    $$ = new NumericIterationRange($1, $3, $5, $7);
+                    std::cout << "[PARSER]: ID IN INT_VAL : INT_VAL : INT_VAL" << std::endl;
+                //     $$ = new NumericIterationRange($1, $3, $5, $7);
                 }
 ;
 
 PRIMITIVE       : CHAR
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::CHAR, {});
+                    // $$ = new PrimitiveTypeNode(PrimitiveType::CHAR, {});
                 }
                 | INT
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::INT, {});
+                    // $$ = new PrimitiveTypeNode(PrimitiveType::INT, {});
+                    std::cout << "[PARSER]: " << "PRIMITIVE INT" << std::endl;
                 }
                 | FLOAT
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::FLOAT, {});
+                    // $$ = new PrimitiveTypeNode(PrimitiveType::FLOAT, {});
                 }
                 | DOUBLE
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::DOUBLE, {});
+                    // $$ = new PrimitiveTypeNode(PrimitiveType::DOUBLE, {});
                 }
 ;
 
 TYPE            : NON_FUNC_TYPE
-                | '(' ARGS_DECL ')' OPT_NON_FUNC_TYPE
-                {
-                    $$ = new FunctionTypeNode($4);
-                }
+                // | '(' ARGS_DECL ')' OPT_NON_FUNC_TYPE
+                // {
+                //     $$ = new FunctionTypeNode($4);
+                // }
 ;
 
-ARGS_DECL       : ID OPT_NON_FUNC_TYPE
-                {
-                    $$.AddArgument($2, $1);
-                }
-                | ARGS_DECL ',' ID OPT_NON_FUNC_TYPE
-                {
-                    $$ = $1;
-                    $$.AddArgument($4, $3);
-                }
-;
+// ARGS_DECL       : ID OPT_NON_FUNC_TYPE
+//                 {
+//                     $$.AddArgument($2, $1);
+//                 }
+//                 | ARGS_DECL ',' ID OPT_NON_FUNC_TYPE
+//                 {
+//                     $$ = $1;
+//                     $$.AddArgument($4, $3);
+//                 }
+// ;
 
-OPT_NON_FUNC_TYPE   : %empty
-                    {
-                        $$ = new TypeNode(nullptr);
-                    }
-                    | ':' NON_FUNC_TYPE
-                    {
-                        $$ = $2;
-                    }
-;
+// OPT_NON_FUNC_TYPE   : %empty
+//                     {
+//                         $$ = new TypeNode(nullptr);
+//                     }
+//                     | ':' NON_FUNC_TYPE
+//                     {
+//                         $$ = $2;
+//                     }
+// ;
 
 NON_FUNC_TYPE   : PRIMITIVE
                 | INT '(' INT_VAL ')'
                 {
-                    $$ = new PrimitiveTypeNode(PrimitiveType::INT, $3);
+                    std::cout << "[PARSER] INT ( INT_VAL )" << std::endl;
+                //     $$ = new PrimitiveTypeNode(PrimitiveType::INT, $3);
                 }
-                | NON_FUNC_TYPE '[' INT_VAL ']'
+                /* | NON_FUNC_TYPE '[' INT_VAL ']'
                 {
-                    $$ = new SequenceTypeNode(AggregateType::ARRAY, $1, $3);
+                    std::cout << "[PARSER] NON_FUNC_TYPE [ INT_VAL ]" << std::endl;
+                //     $$ = new SequenceTypeNode(AggregateType::ARRAY, $1, $3);
                 }
                 | VECTOR '<' NON_FUNC_TYPE ',' INT_VAL '>'
                 {
-                    $$ = new SequenceTypeNode(AggregateType::VECTOR, $3, $5);
-                }
+                    std::cout << "[PARSER] VECTOR < NON_FUNC_TYPE , INT_VAL >" << std::endl;
+                //     $$ = new SequenceTypeNode(AggregateType::VECTOR, $3, $5);
+                } */
 ;
 
 OPT_TYPE_DECL   : %empty
                 {
-                    $$ = new TypeNode(nullptr);
+                    std::cout << "[PARSER]: " << "OPT_TYPE_DECL1" << std::endl;
+                    // $$ = new TypeNode(nullptr);
                 }
                 | ':' TYPE
                 {
-                    $$ = $2;
+                    std::cout << "[PARSER]: " << "OPT_TYPE_DECL2" << std::endl;
+                    // $$ = $2;
                 }
 ;
 
 ASSIGNMENT      : ID OPT_TYPE_DECL '=' EXPR ';'
                 {
-                    $$ = new AssignmentNode($1, $4);
+                    std::cout << "[PARSER]: " << "ASSIGNMENT" << std::endl;
+                    // $$ = new AssignmentNode($1, $4);
                 }
 ;
 
 EXPR            : EXPR2
-                | EXPR EQ EXPR2
+                | COND_EXPR
+;
+
+COND_EXPR       : EXPR EQ EXPR
                 {
-                    $$ = new BinOpNode(Token::EQ, $1, $3);
+                    std::cout << "[PARSER]: EQ" << std::endl;
                 }
-                | EXPR NE EXPR2
+                | EXPR NE EXPR
                 {
-                    $$ = new BinOpNode(Token::NE, $1, $3);
+                    std::cout << "[PARSER]: NE" << std::endl;
                 }
-                | EXPR GE EXPR2
+                | EXPR GE EXPR
                 {
-                    $$ = new BinOpNode(Token::GE, $1, $3);
+                    std::cout << "[PARSER]: GE" << std::endl;
                 }
-                | EXPR LE EXPR2
+                | EXPR '>' EXPR
                 {
-                    $$ = new BinOpNode(Token::LE, $1, $3);
+                    std::cout << "[PARSER]: GT" << std::endl;
                 }
-                | EXPR '>' EXPR2
+                | EXPR LE EXPR
                 {
-                    $$ = new BinOpNode(Token::GT, $1, $3);
+                    std::cout << "[PARSER]: LE" << std::endl;
                 }
-                | EXPR '<' EXPR2
+                | EXPR '<' EXPR
                 {
-                    $$ = new BinOpNode(Token::LT, $1, $3);
+                    std::cout << "[PARSER]: LT" << std::endl;
                 }
 ;
 
 EXPR2           : TERM
-                | TERM '+' TERM
+                | TERM '+' EXPR2
                 {
-                    $$ = new BinOpNode(Token::PLUS, $1, $3);
+                    std::cout << "[PARSER]: " << "TERM + TERM" << std::endl;
+                //     $$ = new BinOpNode(Token::PLUS, $1, $3);
                 }
-                | TERM '-' TERM
+                | TERM '-' EXPR2
                 {
-                    $$ = new BinOpNode(Token::MINUS, $1, $3);
+                    std::cout << "[PARSER]: " << "TERM - TERM" << std::endl;
+                //     $$ = new BinOpNode(Token::MINUS, $1, $3);
                 }
 ;
 
 TERM            : VAL
+                | '(' EXPR ')'
+                {
+                    std::cout << "[PARSER]: " << "TERM -> ( EXPR )" << std::endl;
+                }
                 | TERM '*' TERM
                 {
-                    $$ = new BinOpNode(Token::MUL, $1, $3);
+                    std::cout << "[PARSER]: " << "TERM * TERM" << std::endl;
+                //     $$ = new BinOpNode(Token::MUL, $1, $3);
                 }
                 | TERM '/' TERM
                 {
-                    $$ = new BinOpNode(Token::DIV, $1, $3);
+                    std::cout << "[PARSER]: " << "TERM / TERM" << std::endl;
+                //     $$ = new BinOpNode(Token::DIV, $1, $3);
                 }
 ;
 
 LITERAL         : INT_VAL
                 {
-                    $$ = new LiteralNode(Token::INT_VAL, $1);
+                    // $$ = new LiteralNode(Token::INT_VAL, $1);
+                    std::cout << "[PARSER]: " << "INT_VAL" << std::endl;
                 }
                 | FLOAT_VAL
                 {
-                    $$ = new LiteralNode(Token::FLOAT_VAL, $1);
+                    std::cout << "[PARSER]: " << "FLOAT_VAL" << std::endl;
+                //     $$ = new LiteralNode(Token::FLOAT_VAL, $1);
                 }
-                | STRING
-                {
-                    $$ = new LiteralNode(Token::STRING, $1);
-                }
+                // | STRING
+                // {
+                //     $$ = new LiteralNode(Token::STRING, $1);
+                // }
 ;
 
 VAL             : LITERAL
-                | '(' EXPR ')'
                 {
-                    $$ = new ExpressionNode($2);
+                    // $$ = new ExpressionNode($2);
+                    std::cout << "[PARSER]: " << "LITERAL" << std::endl;
                 }
                 | ID
                 {
-                    $$ = new IDNode($1);
+                    // $$ = new IDNode($1);
+                    std::cout << "[PARSER]: " << "VAL1" << std::endl;
                 }
                 | ID '(' ARGS ')'
                 {
-                    $$ = new FunctionCallNode($1, $3);
+                    // $$ = new FunctionCallNode($1, $3);
+                    std::cout << "[PARSER]: " << "VAL2" << std::endl;
+                }
+                | INPUT '(' ARGS ')'
+                {
+                    std::cout << "[PARSER]: " << "VAL3" << std::endl;
+                }
+                | OUTPUT '(' ARGS ')'
+                {
+                    std::cout << "[PARSER]: " << "VAL4" << std::endl;
                 }
 ;
 
 ARGS            : EXPR
                 {
                     // $$.clear();
-                    $$.push_back($1);
+                    // $$.push_back($1);
+                    std::cout << "[PARSER]: " << "ARG1" << std::endl;
                 }
                 | ARGS ',' EXPR
                 {
-                    $$ = $1;
-                    $$.push_back($3);
+                    // $$ = $1;
+                    // $$.push_back($3);
+                    std::cout << "[PARSER]: " << "ARG2" << std::endl;
                 }
 ;
 
 %%
+
+void yyerror(const char *s) {
+    std::cerr << s << ", line " << yylineno << std::endl;
+    exit(1);
+}
+
+main(int argc, char **argv)
+{
+    yyin = fopen(argv[1], "r");
+    yyparse();
+}

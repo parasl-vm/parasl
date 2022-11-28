@@ -1,0 +1,40 @@
+v0 : int = input(0);
+output(0, v0);
+
+v_1 = 3.5 + 7 * 5.75 + (1 + 0.6) / 2;
+___var___: int(21) = (1 + 5);
+
+if (__var__ <= 6)
+    output(0, v_1);
+else {
+    output(0, 44);
+    output(0, 55);
+    return;
+}
+
+if (__var__ <= 0)
+    output(0, v0);
+else
+    output(0, 88);
+
+output(0, 99);
+
+
+if (__var__ <= 9)
+    if (__var__ <= 8)
+        __var__ = 12;
+    else
+        __var__ = 11;
+
+
+for (x in 0:5) {
+    for (y in 0:8:2)
+        output(0, x + y);
+
+    x = 1 < v0 <= 89;
+    output(0, 2 * x);
+
+    while (0)
+        while (1)
+            output(0, x - y);
+}

@@ -2,19 +2,19 @@
 #define PARASL_BIN_OP_NODE_H_
 
 #include "ExpressionNode.h"
-#include "Token.h"
+// #include "../parser.tab.h"
 
 
 namespace lexer {
 class BinaryOpNode : public ExpressionNode {
 public:
-    BinaryOpNode(Token opType, ExpressionNode *lhs, ExpressionNode *rhs)
+    BinaryOpNode(int opType, ExpressionNode *lhs, ExpressionNode *rhs)
         : ExpressionNode(), lhs(lhs), rhs(rhs) {}
     ~BinaryOpNode() noexcept = default;
 
 private:
     // TODO(dslynko): may make opType template argument
-    Token opType = Token::INVALID_TOKEN;
+    int opType;
     ExpressionNode *lhs = nullptr;
     ExpressionNode *rhs = nullptr;
 };

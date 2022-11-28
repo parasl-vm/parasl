@@ -7,10 +7,7 @@
 #include "class.h"
 #include "function.h"
 
-class Layer {
-public:
-
-private:
+struct Layer {
     std::unordered_map<std::string, Class> class_table;
     std::unordered_map<std::string, Function> function_table; // at least contains main
 };

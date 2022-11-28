@@ -20,7 +20,7 @@ enum class PrimitiveType {
     DOUBLE
 };
 
-int16_t getDefaultPrimitiveSize(PrimitiveType type) {
+static int16_t getDefaultPrimitiveSize(PrimitiveType type) {
     switch (type) {
     case PrimitiveType::CHAR:
         return sizeof(int8_t);
@@ -44,7 +44,7 @@ public:
             typeSize = typeSz.value();
             ASSERT(typeSize > 0);
         } else {
-            typeSize = getDefaultPrimitiveSize(type);
+            typeSize = lexer::getDefaultPrimitiveSize(type);
         }
     }
 
@@ -80,7 +80,7 @@ public:
         : returnType(returnType) {}
 
     void AddArgument(TypeNode *type, IDNode *arg) {
-        args.emplace_back(type, arg);
+        // args.emplace_back(type, arg);
     }
 
 private:
