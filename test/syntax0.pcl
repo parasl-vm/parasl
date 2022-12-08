@@ -9,7 +9,6 @@ if (__var__ <= 6)
 else {
     output(0, 44);
     output(0, 55);
-    return;
 }
 
 if (__var__ <= 0)

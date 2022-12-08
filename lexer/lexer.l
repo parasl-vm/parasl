@@ -34,8 +34,8 @@ DIGIT       [0-9]
 INT_VAL     [+-]?{DIGIT}+
 FLOAT_VAL   [+-]?{DIGIT}+"."{DIGIT}+([eE][+-]?{DIGIT}+)?
 
-ID          [a-z_][a-z0-9_]*
-/* STRING      ["]([^\n"](\")?)+["] */
+ID          [a-zA-Z_][a-zA-Z0-9_]*
+STRING      ["]([^\n"]|(\"))*["]
 WHITESPACE  [ \t\n]+
 
 EQ          ==
@@ -43,12 +43,14 @@ NE          !=
 GE          >=
 LE          [<]=
 
+DOUBLE_DOT  [.][.]
+
 LAYER       layer
 INPUT       input
 OUTPUT      output
-REPEAT      repeat
+/* REPEAT      repeat */
 GLUE        glue
-BIND        bind
+/* BIND        bind */
 IF          if
 ELSE        else
 WHILE       while
@@ -74,27 +76,36 @@ VECTOR      vector
   /* [:]                       { tokens.push_back(TOKEN(COLON)); } */
   /* [=]                       { tokens.push_back(TOKEN(ASSIGN)); } */
   /* [,]                       { tokens.push_back(TOKEN(COMMA)); } */
+  /* {REPEAT} { std::cout << "[LEXER]: REPEAT" << std::endl; TOKEN(REPEAT); } */
+  /* {BIND} { std::cout << "[LEXER]: BIND" << std::endl; TOKEN(BIND); } */
 
 {EQ} {
     std::cout << "[LEXER]: EQ" << std::endl;
     TOKEN(EQ);
-}  
+}
 {NE} {
     std::cout << "[LEXER]: NE" << std::endl;
     TOKEN(NE);
-}  
+}
 {GE} {
     std::cout << "[LEXER]: GE" << std::endl;
     TOKEN(GE);
-}  
+}
 {LE} {
     std::cout << "[LEXER]: LE" << std::endl;
     TOKEN(LE);
-}  
+}
+
+{DOUBLE_DOT} {
+    std::cout << "[LEXER]: DOUBLE_DOT" << std::endl;
+    TOKEN(DOUBLE_DOT);
+}
+
 {LAYER} {
     std::cout << "[LEXER]: LAYER" << std::endl;
     TOKEN(LAYER);
 }
+
 {INPUT} {
     std::cout << "[LEXER]: INPUT" << std::endl;
     TOKEN(INPUT);
@@ -103,18 +114,11 @@ VECTOR      vector
     std::cout << "[LEXER]: OUTPUT" << std::endl;
     TOKEN(OUTPUT);
 }
-{REPEAT} {
-    std::cout << "[LEXER]: REPEAT" << std::endl;
-    TOKEN(REPEAT);
-}
 {GLUE} {
     std::cout << "[LEXER]: GLUE" << std::endl;
     TOKEN(GLUE);
 }
-{BIND} {
-    std::cout << "[LEXER]: BIND" << std::endl;
-    TOKEN(BIND);
-}
+
 {IF} {
     std::cout << "[LEXER]: IF" << std::endl;
     TOKEN(IF);
@@ -139,6 +143,7 @@ VECTOR      vector
     std::cout << "[LEXER]: RETURN" << std::endl;
     TOKEN(RETURN);
 }
+
 {CHAR} {
     std::cout << "[LEXER]: CHAR" << std::endl;
     TOKEN(CHAR);
@@ -159,6 +164,7 @@ VECTOR      vector
     std::cout << "[LEXER]: VECTOR" << std::endl;
     TOKEN(VECTOR);
 }
+
 {INT_VAL} {
     std::cout << "[LEXER]: INT_VAL: " << yytext << std::endl;
     lexer::LiteralNode* node = new lexer::LiteralNode(yytokentype::INT_VAL, yytext);
@@ -170,16 +176,21 @@ VECTOR      vector
     lexer::LiteralNode* node = new lexer::LiteralNode(yytokentype::FLOAT_VAL, yytext);
     TOKEN(FLOAT_VAL);
 }
+
 {ID} {
     std::cout << "[LEXER]: ID: " << yytext << std::endl;
     lexer::IDNode* node = new lexer::IDNode(yytext);
     // yylval.id_node_t = node;
     TOKEN(ID);
 }
-  /* {STRING}                { TOKEN(STRING); } */
+
+{STRING} {
+    std::cout << "[LEXER]: STRING: " << yytext << std::endl;
+    TOKEN(STRING);
+}
 
 . {
-    std::cout << "[LEXER]: Token not found " << *yytext << "\n";
+    std::cout << "[LEXER]: Token not found: " << yytext << "\n";
 }
 
 %%
