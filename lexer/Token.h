@@ -1,9 +1,9 @@
 #ifndef PARASL_TOKENS_H_
 #define PARASL_TOKENS_H_
 
-namespace lexer {
-enum class Token {
-    EQ = 0,
+// namespace lexer {
+enum yytokentype {
+    EQ = 258,
     NE,
     GE,
     LE,
@@ -31,9 +31,18 @@ enum class Token {
     INT,
     FLOAT,
     DOUBLE,
-    VECTOR,
+    VECTOR, // ?
+    INT_VAL,
+    ID,
+    COLON,
+    SEMICOLON,
+    COMMA,
+    LEFT_ROUND_PARENTHESIS,
+    RIGHT_ROUND_PARENTHESIS,
+    LEFT_CURLY_PARENTHESIS,
+    RIGHT_CURLY_PARENTHESIS,
     INVALID_TOKEN
 };
-}   // namespace lexer
+// }   // namespace lexer
 
 #endif  // PARASL_TOKENS_H_

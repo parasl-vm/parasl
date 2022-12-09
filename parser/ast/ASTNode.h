@@ -1,8 +1,8 @@
 #ifndef PARASL_AST_NODE_H_
 #define PARASL_AST_NODE_H_
 
-#include "macros.h"
-#include <span>
+#include "../../utils/macros.h"
+// #include <span>
 
 
 namespace lexer {

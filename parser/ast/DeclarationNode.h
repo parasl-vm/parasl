@@ -2,7 +2,7 @@
 #define PARASL_DECLARATION_NODE_H_
 
 #include "ExpressionNode.h"
-#include "Token.h"
+// #include "../parser.tab.h"
 
 
 namespace lexer {

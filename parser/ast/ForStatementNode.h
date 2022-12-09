@@ -1,5 +1,5 @@
-#ifndef PARASL_WHILE_STATEMENT_NODE_H_
-#define PARASL_WHILE_STATEMENT_NODE_H_
+#ifndef PARASL_FOR_STATEMENT_NODE_H_
+#define PARASL_FOR_STATEMENT_NODE_H_
 
 #include "ExpressionNode.h"
 #include "IDNode.h"
@@ -56,4 +56,4 @@ private:
 };
 }   // namespace lexer
 
-#endif  // PARASL_WHILE_STATEMENT_NODE_H_
+#endif  // PARASL_FOR_STATEMENT_NODE_H_

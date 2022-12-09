@@ -1,0 +1,11 @@
+var_1_ = input(0);
+Arr1 = input(1..3) : int[3];
+_arr_2: int[2]  = input(4..5);
+
+struct1 = glue(var_1_, Arr1);
+output(struct1[0]);
+
+struct2 = glue(var_1_ : x, Arr1 : y, _arr_2 : z);
+struct2[1][0] = -1;
+struct2.z[2] = -2;
+output(struct2.x);

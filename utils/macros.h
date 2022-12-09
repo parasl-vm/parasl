@@ -24,8 +24,8 @@
 
 #endif
 
-#define WARNING(mess) utils::PrintWarning((mess), __FILE__, __LINE__, __FUNCTION__)
-#define UNREACHABLE(mess) utils::AssertionFail(mess, __FILE__, __LINE__, __FUNCTION__)
+#define WARNING(mess) /* utils::PrintWarning((mess), __FILE__, __LINE__, __FUNCTION__) */
+#define UNREACHABLE(mess) /* utils::AssertionFail(mess, __FILE__, __LINE__, __FUNCTION__) */
 
 
 #define DEFAULT_DTOR(TypeName) \

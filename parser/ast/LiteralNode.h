@@ -3,22 +3,22 @@
 
 #include "ExpressionNode.h"
 #include <string>
-#include "Token.h"
+// #include "../parser.tab.h"
 
 
 namespace lexer {
 class LiteralNode : public ExpressionNode {
 public:
-    LiteralNode(Token type, const char *value)
+    LiteralNode(int type, const char *value)
         : ExpressionNode(), type(type), value{value}
     {
-        auto numType = static_cast<int>(type);
-        ASSERT(numType >= static_cast<int>(Token::STRING)
-            && numType < static_cast<int>(Token::INVALID_TOKEN));
+        // auto numType = static_cast<int>(type);
+        // ASSERT(numType >= static_cast<int>(Token::STRING)
+        //     && numType < static_cast<int>(Token::INVALID_TOKEN));
     }
     ~LiteralNode() noexcept = default;
 
-    Token GetTokenType() const {
+    int GetTokenType() const {
         return type;
     }
     const std::string &GetValue() const {
@@ -26,7 +26,7 @@ public:
     }
 
 private:
-    Token type = Token::INVALID_TOKEN;
+    int type;
     std::string value;
 };
 }   // namespace lexer

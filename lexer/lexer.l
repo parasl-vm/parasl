@@ -1,35 +1,56 @@
-%option c++
+  /* %option c++ */
 %option yylineno
 %option noyywrap
 
 %{
     #include <string>
-    #include "Token.h"
+    #include <iostream>
+    #include <vector>
+    #include <fstream>
+    #include <cstdlib>
 
-    #define TOKEN(NAME) return lexer::Token::NAME
+    // #include "Token.h"
 
-    void yyerror(const char *s);
+    #include "../parser/parser.tab.h"
+
+    #define TOKEN(NAME) return yytokentype::NAME
+
+    // void yyerror(const char *s);
+
+    std::vector<int> tokens; // not needed
+    // yyFlexLexer* my_lexer;
+
+    // union DataType
+    // {
+    //     int64_t int_value;
+    //     std::string string_value;
+    // };
+
+    // DataType yylval;
 %}
 
+/* TODO(dslynko): no leading zeros */
 DIGIT       [0-9]
-INT_VAL     [+-]{DIGIT}+
-FLOAT_VAL   {DIGIT}+("."{DIGIT}+)?([eE][+-]?{DIGIT}+)?
+INT_VAL     [+-]?{DIGIT}+
+FLOAT_VAL   [+-]?{DIGIT}+"."{DIGIT}+([eE][+-]?{DIGIT}+)?
 
-ID          [a-zA-Z][a-zA-Z0-9_]*
-STRING      ["][^\n"]+["]
-WHITESPACE  [ \t]+
+ID          [a-zA-Z_][a-zA-Z0-9_]*
+STRING      ["]([^\n"]|(\"))*["]
+WHITESPACE  [ \t\n]+
 
 EQ          ==
 NE          !=
 GE          >=
 LE          [<]=
 
+DOUBLE_DOT  [.][.]
+
 LAYER       layer
 INPUT       input
 OUTPUT      output
-REPEAT      repeat
+/* REPEAT      repeat */
 GLUE        glue
-BIND        bind
+/* BIND        bind */
 IF          if
 ELSE        else
 WHILE       while
@@ -44,40 +65,153 @@ VECTOR      vector
 
 %%
 
-{WHITESPACE}            { return " "; }
-[/][/]["].*\n
+{WHITESPACE}        /* eat up whitespace */
+  /* [/][/]["].*\n        eat up comments? */
 
-[+-/*=<>;:,()\[\]{}]    { return *yytext; }
+[+-/*<>\[\]{}();:=,]    { return *yytext; }
 
-{EQ}                    { TOKEN(EQ); }
-{NE}                    { TOKEN(NE); }
-{GE}                    { TOKEN(GE); }
-{LE}                    { TOKEN(LE); }
+  /* [(]                       { tokens.push_back(TOKEN(LEFT_ROUND_PARENTHESIS)); } */
+  /* [)]                       { tokens.push_back(TOKEN(RIGHT_ROUND_PARENTHESIS)); } */
+  /* [;]                       { tokens.push_back(TOKEN(SEMICOLON)); } */
+  /* [:]                       { tokens.push_back(TOKEN(COLON)); } */
+  /* [=]                       { tokens.push_back(TOKEN(ASSIGN)); } */
+  /* [,]                       { tokens.push_back(TOKEN(COMMA)); } */
+  /* {REPEAT} { std::cout << "[LEXER]: REPEAT" << std::endl; TOKEN(REPEAT); } */
+  /* {BIND} { std::cout << "[LEXER]: BIND" << std::endl; TOKEN(BIND); } */
 
-{LAYER}                 { TOKEN(LAYER); }
-{INPUT}                 { TOKEN(INPUT); }
-{OUTPUT}                { TOKEN(OUTPUT); }
-{REPEAT}                { TOKEN(REPEAT); }
-{GLUE}                  { TOKEN(GLUE); }
-{BIND}                  { TOKEN(BIND); }
-{IF}                    { TOKEN(IF); }
-{ELSE}                  { TOKEN(ELSE); }
-{WHILE}                 { TOKEN(WHILE); }
-{FOR}                   { TOKEN(FOR); }
-{IN}                    { TOKEN(IN); }
-{RETURN}                { TOKEN(RETURN); }
-{CHAR}                  { TOKEN(CHAR); }
-{INT}                   { TOKEN(INT); }
-{FLOAT}                 { TOKEN(FLOAT); }
-{DOUBLE}                { TOKEN(DOUBLE); }
-{VECTOR}                { TOKEN(VECTOR); }
+{EQ} {
+    std::cout << "[LEXER]: EQ" << std::endl;
+    TOKEN(EQ);
+}
+{NE} {
+    std::cout << "[LEXER]: NE" << std::endl;
+    TOKEN(NE);
+}
+{GE} {
+    std::cout << "[LEXER]: GE" << std::endl;
+    TOKEN(GE);
+}
+{LE} {
+    std::cout << "[LEXER]: LE" << std::endl;
+    TOKEN(LE);
+}
 
-{INT_VAL}               { TOKEN(INT_VAL); }
-{FLOAT_VAL}             { TOKEN(FLOAT_VAL); }
+{DOUBLE_DOT} {
+    std::cout << "[LEXER]: DOUBLE_DOT" << std::endl;
+    TOKEN(DOUBLE_DOT);
+}
 
-{ID}                    { TOKEN(ID); }
-{STRING}                { TOKEN(STRING); }
+{LAYER} {
+    std::cout << "[LEXER]: LAYER" << std::endl;
+    TOKEN(LAYER);
+}
 
-.                       { yyerror(""); }
+{INPUT} {
+    std::cout << "[LEXER]: INPUT" << std::endl;
+    TOKEN(INPUT);
+}
+{OUTPUT} {
+    std::cout << "[LEXER]: OUTPUT" << std::endl;
+    TOKEN(OUTPUT);
+}
+{GLUE} {
+    std::cout << "[LEXER]: GLUE" << std::endl;
+    TOKEN(GLUE);
+}
+
+{IF} {
+    std::cout << "[LEXER]: IF" << std::endl;
+    TOKEN(IF);
+}
+{ELSE} {
+    std::cout << "[LEXER]: ELSE" << std::endl;
+    TOKEN(ELSE);
+}
+{WHILE} {
+    std::cout << "[LEXER]: WHILE" << std::endl;
+    TOKEN(WHILE);
+}
+{FOR} {
+    std::cout << "[LEXER]: FOR" << std::endl;
+    TOKEN(FOR);
+}
+{IN} {
+    std::cout << "[LEXER]: IN" << std::endl;
+    TOKEN(IN);
+}
+{RETURN} {
+    std::cout << "[LEXER]: RETURN" << std::endl;
+    TOKEN(RETURN);
+}
+
+{CHAR} {
+    std::cout << "[LEXER]: CHAR" << std::endl;
+    TOKEN(CHAR);
+}
+{INT} {
+    std::cout << "[LEXER]: INT" << std::endl;
+    TOKEN(INT);
+}
+{FLOAT} {
+    std::cout << "[LEXER]: FLOAT" << std::endl;
+    TOKEN(FLOAT);
+}
+{DOUBLE} {
+    std::cout << "[LEXER]: DOUBLE" << std::endl;
+    TOKEN(DOUBLE);
+}
+{VECTOR} {
+    std::cout << "[LEXER]: VECTOR" << std::endl;
+    TOKEN(VECTOR);
+}
+
+{INT_VAL} {
+    std::cout << "[LEXER]: INT_VAL: " << yytext << std::endl;
+    lexer::LiteralNode* node = new lexer::LiteralNode(yytokentype::INT_VAL, yytext);
+    // yylval.literal_node_t = node;
+    TOKEN(INT_VAL);
+}
+{FLOAT_VAL} {
+    std::cout << "[LEXER]: FLOAT_VAL" << std::endl;
+    lexer::LiteralNode* node = new lexer::LiteralNode(yytokentype::FLOAT_VAL, yytext);
+    TOKEN(FLOAT_VAL);
+}
+
+{ID} {
+    std::cout << "[LEXER]: ID: " << yytext << std::endl;
+    lexer::IDNode* node = new lexer::IDNode(yytext);
+    // yylval.id_node_t = node;
+    TOKEN(ID);
+}
+
+{STRING} {
+    std::cout << "[LEXER]: STRING: " << yytext << std::endl;
+    TOKEN(STRING);
+}
+
+. {
+    std::cout << "[LEXER]: Token not found: " << yytext << "\n";
+}
 
 %%
+
+// void yyerror(const char *s)
+// {
+//     std::cout << s << "\n";
+// }
+
+// int main(int argc, char **argv)
+// {
+//     std::ifstream input(argv[1]);
+
+//     my_lexer = new yyFlexLexer(input, std::cout);
+//     while(my_lexer->yylex() != 0);
+
+//     for (auto item: tokens) {
+//         std::cout << item << " ";
+//     }
+//     std::cout << "\n";
+
+//     delete my_lexer;
+//     return 0;
+// }
