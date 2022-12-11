@@ -5,11 +5,9 @@
 
 #include "layer.h"
 
-struct Program {
-    Function* GetMain() {
-        return &(layers[0].function_table.at("MAIN"));
-    }
-
+// Program is not being used now
+class Program {
+public:
     std::vector<Layer> layers;
 };
 

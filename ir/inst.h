@@ -3,23 +3,67 @@
 
 #include <vector>
 
-#include "types.h"
+#include "vreg.h"
 #include "opcodes.h"
 
-struct Inst
+class Function;
+
+class Inst
 {
-    enum Opcode {
-#define INST_TYPES(op, ...) op,
-    OPCODES_LIST(INST_TYPES)
-#undef INST_TYPES
-        INVALID
-    };
+public:
+    // maybe just a vector of VReg* as input?
+    template <typename... input>
+    static Inst* InstBuilder(Opcode opcode, input... inputs) {
+        return new Inst(opcode, std::vector<VReg*>{inputs...});
+    }
 
-    Opcode opcode = Opcode::INVALID;
+    ACCESSOR_MUTATOR(opcode_, Opcode, Opcode)
+    ACCESSOR_MUTATOR(inst_id_, InstId, uint32_t)
+    ACCESSOR_MUTATOR(owner_, Function, Function*)
 
-    std::vector<size_t> vregs;
-    std::vector<IdType> ids;
-    std::vector<ImmType> imms;
+    VReg* GetInput(uint32_t index) const
+    {
+        assert(index < inputs_.size());
+        return inputs_[index];
+    }
+
+    uint32_t GetInputsSize() const
+    {
+        return inputs_.size();
+    }
+
+    const std::vector<VReg*>& GetInputs() const
+    {
+        return inputs_;
+    }
+
+    void Dump();
+
+private:
+    Inst(Opcode opcode, std::vector<VReg*> inputs) : opcode_(opcode), inputs_(inputs) {
+        ++max_inst_id_;
+        inst_id_ = max_inst_id_;
+    }
+
+    void DumpOpcode()
+    {
+        #define PRINT_OPCODE(name, ...)                                                                                       \
+        case Opcode::name:                                                                                                 \
+            std::cout << #name;                                                                                     \
+            return;
+
+        switch (opcode_) {
+            OPCODES_LIST(PRINT_OPCODE)
+        }
+        #undef PRINT_OPCODE
+    }
+
+    Opcode opcode_ = Opcode::INVALID;
+    std::vector<VReg*> inputs_;
+    uint32_t inst_id_ = 0;
+    Function *owner_ = nullptr;
+    static inline uint32_t max_inst_id_ = 0;
 };
+
 
 #endif // INST_H
