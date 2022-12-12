@@ -7,6 +7,8 @@
 #include "class.h"
 #include "function.h"
 
+class Program;
+
 class Layer {
 public:
     Layer(std::string name) : name_(name)
@@ -56,11 +58,15 @@ public:
     {
         std::cout << "Layer \"" << name_ << "\"\n";
         std::cout << "Global vars [";
+        bool pretty_flag = false;
         for (auto gl_var: global_vars_) {
-            std::cout << "\n";
+            pretty_flag = true;
+            std::cout << "\n\t";
             gl_var.second->Dump();
             std::cout << ",";
         }
+        if (pretty_flag)
+            std::cout << "\n";
         std::cout << "]\n\n";
 
         // TODO(itrubachev) add dump of classes
@@ -78,6 +84,7 @@ private:
     std::unordered_map<std::string, Function*> function_table_; // at least contains main
     std::unordered_map<std::string, VReg*> global_vars_;
 
+    Program* program_;
     uint8_t id_ = 0;
     std::string name_;
 };

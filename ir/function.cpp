@@ -13,7 +13,7 @@ void Function::Dump()
     bool pretty_flag = false;
     for (auto loc_var: local_vars_) {
         pretty_flag = true;
-        std::cout << "\n";
+        std::cout << "\n\t";
         loc_var.second->Dump();
         std::cout << ",";
     }

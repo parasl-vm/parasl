@@ -54,6 +54,9 @@ private:
 
         switch (opcode_) {
             OPCODES_LIST(PRINT_OPCODE)
+            case Opcode::INVALID:
+                std::cout << "INVALID";
+                return;
         }
         #undef PRINT_OPCODE
     }
