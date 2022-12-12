@@ -71,4 +71,14 @@
     NO_MOVE_CTOR(TypeName)         \
     NO_MOVE_OPERATOR(TypeName)
 
+#define ACCESSOR_MUTATOR(field_name, accessor_name, type)                \
+    type Get##accessor_name()                                            \
+    {                                                                    \
+        return field_name;                                               \
+    }                                                                    \
+    void Set##accessor_name(type accessor_name)                          \
+    {                                                                    \
+        field_name = accessor_name;                                      \
+    }
+
 #endif // PARASL_MACROS_H_

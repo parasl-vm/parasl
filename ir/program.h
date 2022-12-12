@@ -5,12 +5,21 @@
 
 #include "layer.h"
 
-struct Program {
-    Function* GetMain() {
-        return &(layers[0].function_table.at("MAIN"));
+// now it is a useless class
+class Program {
+public:
+    void AddLayer(std::string name)
+    {
+        layers_.push_back(new Layer(name));
     }
 
-    std::vector<Layer> layers;
+    Layer* GetZeroLayer()
+    {
+        return layers_[0];
+    }
+
+private:
+    std::vector<Layer*> layers_;
 };
 
 #endif  // PROGRAM_H
