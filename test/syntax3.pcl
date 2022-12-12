@@ -1,0 +1,19 @@
+layer (0, "zero") {
+    var = -0.59e-3;
+    _Arr = repeat(var, 3);
+    var2 = 123;
+
+    func1 = { x = input(0); x * x; };
+    func2: (x: int, y: char) : double = x + y - 0.1;
+    func3: (x, y) = {
+        if (x - y < 1)
+            return 1;
+        0;
+    };
+
+    struct1: { x: double, y: vector<double, 3>, method: () } = glue(var, _Arr, bind(func1, struct1.x));
+}
+
+layer (1, "first") {
+    output(1, input(0));
+}

@@ -1,0 +1,19 @@
+layer (0, "main") {
+    1 + 0.5;
+    output(0, 123);
+    var : int(15) = 15 + (2 / 3 * 4) - 5;
+    var2 = var - 1;
+
+    if (var2 < 0)
+        output(1, var2);
+    else
+        output(2, var);
+    output(0, (var + var2) * 2);
+
+    while (var > 0)
+        var = var - 1;
+
+    for (x in 0:5:2) {
+        var = var + x * x;
+    }
+}

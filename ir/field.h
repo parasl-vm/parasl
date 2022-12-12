@@ -7,7 +7,7 @@ class Field {
 public:
 
 private:
-    
+
 };
 
 #endif  // FIELD_H
