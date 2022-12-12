@@ -31,12 +31,9 @@ class Layer;
 class VReg
 {
 public:
-    template <typename type, uint8_t num_bits = 0>
-    static VReg *VRegBuilder(type value, std::string name = NO_NAME);
-    static VReg *VRegBuilderEmpty(std::string name = NO_NAME)
-    {
-        return new VReg(VRegType::UNINITIALIZED, name);
-    }
+    template <typename type>
+    static VReg *VRegBuilder(type value, std::string name = NO_NAME, uint8_t num_bits = 0);
+    // static VReg *VRegBuilder(VRegType type, std::string name = NO_NAME, uint8_t num_bits = 0);
 
     ACCESSOR_MUTATOR(type_, Type, VRegType)
     ACCESSOR_MUTATOR(name_, Name, std::string)
@@ -106,6 +103,7 @@ class VRegDefaultInt : public VReg
 {
 public:
     VRegDefaultInt(int32_t value, std::string name) : VReg(VRegType::INT, name), value_(value) {}
+    VRegDefaultInt(std::string name) : VReg(VRegType::INT, name) {}
     ACCESSOR_MUTATOR(value_, Value, int32_t)
 
 private:
@@ -118,12 +116,22 @@ class VRegCustomInt : public VReg
 public:
     VRegCustomInt(int64_t value, uint8_t bit_num, std::string name) : VReg(VRegType::CUSTOM_INT, name),
     bit_num_(bit_num) {
+        assert(bit_num != 0);
         for (int i = 0; i < bit_num; ++i) {
             mask_ = mask_ << 1;
             mask_ = mask_ | 1;
         }
         value_ = value & mask_;
     }
+    VRegCustomInt(uint8_t bit_num, std::string name) : VReg(VRegType::CUSTOM_INT, name),
+    bit_num_(bit_num) {
+        assert(bit_num != 0);
+        for (int i = 0; i < bit_num; ++i) {
+            mask_ = mask_ << 1;
+            mask_ = mask_ | 1;
+        }
+    }
+
     ACCESSOR_MUTATOR(bit_num_, BitNum, uint8_t)
 
     int64_t GetValue()
@@ -146,6 +154,7 @@ class VRegDouble : public VReg
 {
 public:
     VRegDouble(double value, std::string name) : VReg(VRegType::DOUBLE, name), value_(value) {}
+    VRegDouble(std::string name) : VReg(VRegType::DOUBLE, name) {}
     ACCESSOR_MUTATOR(value_, Value, double)
 
 private:
@@ -156,17 +165,18 @@ class VRegObject : public VReg
 {
 public:
     VRegObject(uintptr_t value, std::string name) : VReg(VRegType::OBJECT_TYPE, name), value_(value) {}
+    VRegObject(std::string name) : VReg(VRegType::OBJECT_TYPE, name) {}
     ACCESSOR_MUTATOR(value_, Value, uintptr_t)
 
 private:
     uintptr_t value_ = 0;
 };
 
-template <typename type, uint8_t num_bits>
-VReg *VReg::VRegBuilder(type value, std::string name)
+template <typename type>
+VReg *VReg::VRegBuilder(type value, std::string name, uint8_t num_bits)
 {
-    if constexpr (num_bits != 0 && std::is_integral<type>::value) {
-        static_assert(num_bits <= 64);
+    if (num_bits != 0 && std::is_integral<type>::value) {
+        assert(num_bits <= 64);
         return static_cast<VReg *>(new VRegCustomInt(value, num_bits, name));
     }
     if constexpr (std::is_pointer<type>::value) {
@@ -177,6 +187,27 @@ VReg *VReg::VRegBuilder(type value, std::string name)
     }
     if constexpr (std::is_floating_point<type>::value) {
         return static_cast<VReg *>(new VRegDouble(value, name));
+    }
+    UNREACHABLE("This line should be unreachable")
+    return nullptr;
+}
+
+// IDK why do we need inline here
+template <>
+inline VReg* VReg::VRegBuilder<VRegType> (VRegType type, std::string name, uint8_t num_bits) {
+    // can be done via dispatch table
+    switch (type)
+    {
+    case VRegType::INT:
+        return static_cast<VReg *>(new VRegDefaultInt(name));
+    case VRegType::CUSTOM_INT:
+        return static_cast<VReg *>(new VRegCustomInt(num_bits, name));
+    case VRegType::DOUBLE:
+        return static_cast<VReg *>(new VRegDouble(name));
+    case VRegType::OBJECT_TYPE:
+        return static_cast<VReg *>(new VRegDefaultInt(name));
+    case VRegType::UNINITIALIZED:
+        return new VReg(type, name);
     }
     UNREACHABLE("This line should be unreachable")
     return nullptr;

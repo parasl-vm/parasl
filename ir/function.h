@@ -35,16 +35,7 @@ public:
     void CreateLocalVariable(std::string name, Type value)
     {
         assert(local_vars_.find(name) == local_vars_.end());
-        local_vars_[name] = VReg::VRegBuilder(value);
-        local_vars_[name]->SetName(name);
-        local_vars_[name]->SetFunction(this);
-    }
-
-    void CreateLocalVariableEmpry(std::string name)
-    {
-        assert(local_vars_.find(name) == local_vars_.end());
-        local_vars_[name] = VReg::VRegBuilderEmpty();
-        local_vars_[name]->SetName(name);
+        local_vars_[name] = VReg::VRegBuilder(value, name);
         local_vars_[name]->SetFunction(this);
     }
 

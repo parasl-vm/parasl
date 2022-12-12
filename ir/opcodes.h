@@ -8,9 +8,13 @@
     _(InstWithRangeInputs)
 
 #define OPCODES_LIST(_)                                     \
-    _(CALL_INTRINSIC_INPUT, InstWithTwoInputs /* input stream:int dst:vreg */)    \
-    _(CALL_INTRINSIC_OUTPUT, InstWithTwoInputs /* output stream:int src:vreg */)                 \
-    _(MOV, InstWithTwoInputs /* mov src:vreg dst:vreg */)                      \
+    _(CALL_INTRINSIC_INPUT /* input stream:int dst:vreg */)    \
+    _(CALL_INTRINSIC_OUTPUT /* output stream:int src:vreg */)  \
+    _(MOV, InstWithTwoInputs /* mov dst:vreg src:vreg */) \
+    _(ADD, /* mov dst:vreg src1:vreg src2:vreg*/)   \
+    _(SUB, /* mov dst:vreg src1:vreg src2:vreg*/)   \
+    _(MUL, /* mov dst:vreg src1:vreg src2:vreg*/)   \
+    _(DIV, /* mov dst:vreg src1:vreg src2:vreg*/)   \
     _(FINALIZE_VM)
 
 

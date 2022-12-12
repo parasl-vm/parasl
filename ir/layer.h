@@ -20,17 +20,8 @@ public:
     void CreateGlobalVariable(Type value, std::string name)
     {
         assert(global_vars_.find(name) == global_vars_.end());
-        global_vars_[name] = VReg::VRegBuilder(value);
+        global_vars_[name] = VReg::VRegBuilder(value, name);
         global_vars_[name]->SetLayer(this);
-        global_vars_[name]->SetName(name);
-    }
-
-    void CreateGlobalVariableEmpry(std::string name)
-    {
-        assert(global_vars_.find(name) == global_vars_.end());
-        global_vars_[name] = VReg::VRegBuilderEmpty();
-        global_vars_[name]->SetLayer(this);
-        global_vars_[name]->SetName(name);
     }
 
     void SetEmptyGlobalVariable(std::string name, VReg *new_vreg)
