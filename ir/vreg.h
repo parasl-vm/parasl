@@ -5,14 +5,11 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
-#include <tuple>
 #include <type_traits>
 #include <variant>
+#include <cstring>
 
 #include "../utils/macros.h"
-
-// All types can me implemented via uint64_t and bit_cast (which is simpiler)
-// I don't know why I've decided to do types in below way
 
 static const std::string NO_NAME{ "" };
 
@@ -34,20 +31,10 @@ class VReg
   public:
     template <typename type>
     static VReg* VRegBuilder(type value, std::string name = NO_NAME, uint8_t num_bits = 0);
-    // static VReg *VRegBuilder(VRegType type, std::string name = NO_NAME, uint8_t num_bits = 0);
 
     ACCESSOR_MUTATOR(type_, Type, VRegType)
     ACCESSOR_MUTATOR(name_, Name, std::string)
-
-    int32_t GetInt();
-    int64_t GetCustomInt();
-    double GetDouble();
-    uintptr_t GetPointer();
-
-    void SetInt(int32_t value);
-    void SetCustomInt(int64_t value);
-    void SetDouble(double value);
-    void SetPointer(uintptr_t value);
+    ACCESSOR_MUTATOR(value_, Value, int64_t)
 
     // local variable
     Function* GetFunction()
@@ -108,144 +95,116 @@ class VReg
         return !(type_ == VRegType::UNINITIALIZED);
     }
 
+    int32_t GetInt()
+    {
+        return GetAs<int32_t>();
+    }
+
+    int64_t GetCustomInt()
+    {
+        return GetValue() & mask_;
+    }
+
+    double GetDouble()
+    {
+        return GetAs<double>();
+    }
+
+    // uintptr_t GetPointer()
+    // {
+    //
+    // }
+
+    void SetInt(int32_t value)
+    {
+        value_ = static_cast<int64_t>(value);
+    }
+
+    void SetCustomInt(int64_t value)
+    {
+        value_ = value & mask_;
+    }
+
+    void SetDouble(double value)
+    {
+        value_ = bit_cast<int64_t>(value);
+    }
+
+    // void SetPointer(uintptr_t value)
+    // {
+    //
+    // }
+
+    template <typename T, std::enable_if_t<std::is_same_v<int8_t, T> || std::is_same_v<uint8_t, T> ||
+                                           std::is_same_v<int16_t, T> || std::is_same_v<uint16_t, T> ||
+                                           std::is_same_v<std::int32_t, T> || std::is_same_v<uint32_t, T> ||
+                                           std::is_same_v<std::int64_t, T> || std::is_same_v<uint64_t, T>> * = nullptr>
+    T GetAs()
+    {
+        return static_cast<T>(GetValue());
+    }
+
+    template <typename T, std::enable_if_t<std::is_same_v<double, T> || std::is_same_v<float, T>> * = nullptr>
+    double GetAs()
+    {
+        return bit_cast<double>(GetValue());
+    }
+
     void Dump();
 
-  protected:
-    VReg(VRegType type, std::string name) : type_(type), name_(name)
+  private:
+    VReg(int64_t value, VRegType type, std::string name) : type_(type), name_(name), value_(value)
+    {}
+
+    VReg(int64_t value, VRegType type, std::string name, uint8_t num_bits) : type_(type), name_(name)
     {
+        // assert(num_bits != 0);
+        for (int i = 0; i < num_bits; ++i) {
+            mask_ = mask_ << 1;
+            mask_ = mask_ | 1;
+        }
+        value_ = value & mask_;
     }
 
-  private:
+    template <class To, class From>
+    static To bit_cast(const From &src)
+    {
+        static_assert(sizeof(To) == sizeof(From), "size of the types must be equal");
+        To dst;
+        std::memcpy(&dst, &src, sizeof(To));
+        return dst;
+    }
+
     VRegType type_ = VRegType::UNINITIALIZED;
-    std::variant<Function*, Class*, Layer*> owner_;
+    std::variant<Function*, Class*, Layer*> owner_; // mhe, bad idea
     std::string name_ = NO_NAME;
-};
-
-class VRegDefaultInt : public VReg
-{
-  public:
-    VRegDefaultInt(int32_t value, std::string name) : VReg(VRegType::INT, name), value_(value)
-    {
-    }
-    VRegDefaultInt(std::string name) : VReg(VRegType::INT, name)
-    {
-    }
-    ACCESSOR_MUTATOR(value_, Value, int32_t)
-
-  private:
-    int32_t value_ = 0;
-};
-
-// do we need big (> 64 bit) int here?
-class VRegCustomInt : public VReg
-{
-  public:
-    VRegCustomInt(int64_t value, uint8_t bit_num, std::string name)
-        : VReg(VRegType::CUSTOM_INT, name), bit_num_(bit_num)
-    {
-        assert(bit_num != 0);
-        for (int i = 0; i < bit_num; ++i) {
-            mask_ = mask_ << 1;
-            mask_ = mask_ | 1;
-        }
-        value_ = value & mask_;
-    }
-    VRegCustomInt(uint8_t bit_num, std::string name)
-        : VReg(VRegType::CUSTOM_INT, name), bit_num_(bit_num)
-    {
-        assert(bit_num != 0);
-        for (int i = 0; i < bit_num; ++i) {
-            mask_ = mask_ << 1;
-            mask_ = mask_ | 1;
-        }
-    }
-
-    ACCESSOR_MUTATOR(bit_num_, BitNum, uint8_t)
-
-    int64_t GetValue()
-    {
-        return value_ & mask_;
-    }
-
-    void SetValue(int64_t value)
-    {
-        value_ = value & mask_;
-    }
-
-  private:
     int64_t value_ = 0;
-    uint8_t bit_num_ = 0;
-    uint8_t mask_ = 0;
-};
 
-class VRegDouble : public VReg
-{
-  public:
-    VRegDouble(double value, std::string name) : VReg(VRegType::DOUBLE, name), value_(value)
-    {
-    }
-    VRegDouble(std::string name) : VReg(VRegType::DOUBLE, name)
-    {
-    }
-    ACCESSOR_MUTATOR(value_, Value, double)
-
-  private:
-    double value_ = 0;
-};
-
-class VRegObject : public VReg
-{
-  public:
-    VRegObject(uintptr_t value, std::string name)
-        : VReg(VRegType::OBJECT_TYPE, name), value_(value)
-    {
-    }
-    VRegObject(std::string name) : VReg(VRegType::OBJECT_TYPE, name)
-    {
-    }
-    ACCESSOR_MUTATOR(value_, Value, uintptr_t)
-
-  private:
-    uintptr_t value_ = 0;
+    // TODO change it to std::optional
+    uint64_t mask_ = 0; // for custom int
 };
 
 template <typename type>
 VReg* VReg::VRegBuilder(type value, std::string name, uint8_t num_bits)
 {
-    if (num_bits != 0 && std::is_integral<type>::value) {
-        assert(num_bits <= 64);
-        return static_cast<VReg*>(new VRegCustomInt(value, num_bits, name));
-    }
-    if constexpr (std::is_pointer<type>::value) {
-        return static_cast<VReg*>(new VRegObject(value, name));
+    if constexpr (std::is_same<type, VRegType>::value) {
+        return new VReg(0, value, name, num_bits);
     }
     if constexpr (std::is_integral<type>::value) {
-        return static_cast<VReg*>(new VRegDefaultInt(value, name));
+        if (num_bits != 0) {
+            return new VReg(value, VRegType::CUSTOM_INT, name, num_bits);
+        }
+        return new VReg(value, VRegType::INT, name);
     }
     if constexpr (std::is_floating_point<type>::value) {
-        return static_cast<VReg*>(new VRegDouble(value, name));
+        int64_t casted_value = VReg::bit_cast<int64_t>(value);
+        return new VReg(casted_value, VRegType::DOUBLE, name);
     }
-    UNREACHABLE("This line should be unreachable")
-    return nullptr;
-}
+    if constexpr (std::is_pointer<type>::value) {
+        int64_t casted_value = VReg::bit_cast<int64_t>(value);
+        return new VReg(casted_value, VRegType::OBJECT_TYPE, name);
+    }
 
-// IDK why do we need inline here
-template <>
-inline VReg* VReg::VRegBuilder<VRegType>(VRegType type, std::string name, uint8_t num_bits)
-{
-    // can be done via dispatch table
-    switch (type) {
-    case VRegType::INT:
-        return static_cast<VReg*>(new VRegDefaultInt(name));
-    case VRegType::CUSTOM_INT:
-        return static_cast<VReg*>(new VRegCustomInt(num_bits, name));
-    case VRegType::DOUBLE:
-        return static_cast<VReg*>(new VRegDouble(name));
-    case VRegType::OBJECT_TYPE:
-        return static_cast<VReg*>(new VRegDefaultInt(name));
-    case VRegType::UNINITIALIZED:
-        return new VReg(type, name);
-    }
     UNREACHABLE("This line should be unreachable")
     return nullptr;
 }

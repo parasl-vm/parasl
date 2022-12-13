@@ -22,6 +22,7 @@ class Runtime
         static void* dtt[] = {
 #define DISPATCH_ADRESSES(op, ...) &&HANDLER_LABEL(op),
             OPCODES_LIST(DISPATCH_ADRESSES)
+            &&do_FINALIZE_VM
 #undef DISPATCH_ADRESSES
         };
 #define NEXT()                                                                                    \
@@ -31,14 +32,15 @@ class Runtime
     } while (0)
 
         NEXT();
+
 #define DISPATCH_HANDLERS(op, ...)                                                                \
     HANDLER_LABEL(op) : HANDLER_NAME(op)();                                                       \
     NEXT();
 
         OPCODES_LIST(DISPATCH_HANDLERS)
 #undef DISPATCH_HANDLERS
-
-        return false;
+    do_FINALIZE_VM:
+        return true;
     }
 
 #define DECLARE_HANDLERS(op, ...) HANDLER_DECL(op);

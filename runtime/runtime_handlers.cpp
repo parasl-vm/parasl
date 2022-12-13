@@ -91,7 +91,7 @@ HANDLER_IMPL(MOV)
         break;
     }
     case VRegType::OBJECT_TYPE: {
-        cur_inst_->GetInput(0)->SetPointer(cur_inst_->GetInput(1)->GetPointer());
+        // cur_inst_->GetInput(0)->SetPointer(cur_inst_->GetInput(1)->GetPointer());
         break;
     }
     default:
@@ -101,9 +101,9 @@ HANDLER_IMPL(MOV)
     return true;
 }
 
-static void CheckArithInstr() {
+// static void CheckArithInstr() {
     
-}
+// }
 
 // ADD
 HANDLER_IMPL(ADD)
@@ -235,16 +235,9 @@ HANDLER_IMPL(JGE)
 HANDLER_IMPL(JMP)
 {
     assert(cur_inst_->GetOpcode() == Opcode::JMP);
-    assert(inst->GetInputsSize() == 1);
-    assert(inst->GetInput(0)->IsInt());
+    assert(cur_inst_->GetInputsSize() == 1);
+    assert(cur_inst_->GetInput(0)->IsInt());
     uint8_t dst = cur_inst_->GetInput(0)->GetInt();
     pc_ = dst;
     return true;
-}
-
-// FINALIZE_VM
-HANDLER_IMPL(FINALIZE_VM)
-{
-    assert(cur_inst_->GetOpcode() == Opcode::FINALIZE_VM);
-    std::exit(0);
 }

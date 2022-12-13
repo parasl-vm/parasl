@@ -29,8 +29,6 @@ TEST(RUNTIME_TEST, TEST_1)
     
     Runtime r(&p);
     r.InterpretationLoop();
-
-    // l0->Dump();
 }
 
 TEST(RUNTIME_TEST, TEST_2)
@@ -67,8 +65,6 @@ TEST(RUNTIME_TEST, TEST_2)
 
     // Runtime r(&p);
     // r.InterpretationLoop();
-
-    // l0->Dump();
 }
 
 TEST(RUNTIME_TEST, TEST_3)
@@ -109,8 +105,6 @@ TEST(RUNTIME_TEST, TEST_3)
 
     Runtime r(&p);
     r.InterpretationLoop();
-
-    // l0->Dump();
 }
 
 TEST(RUNTIME_TEST, TEST_4)
@@ -123,7 +117,7 @@ TEST(RUNTIME_TEST, TEST_4)
     //         __var__ = 11;
     // -----------------------------------------------------------
     // 0. MOV __var__ 6
-    // 1. JLE 2 __var__ 9
+    // 1. JLE 3 __var__ 9
     //    False branch 
     // 2. JMP 7
     //    True branch
@@ -141,16 +135,14 @@ TEST(RUNTIME_TEST, TEST_4)
     Function *main = l0->GetFunction("main");
 
     main->AddInst(Inst::InstBuilder(Opcode::MOV, VREG(VRegType::UNINITIALIZED, "__var__"), VREG(6)));
-    main->AddInst(Inst::InstBuilder(Opcode::JLE, VREG(2), main->GetLocalVariable("__var__"), VREG(9)));
+    main->AddInst(Inst::InstBuilder(Opcode::JLE, VREG(3), main->GetLocalVariable("__var__"), VREG(9)));
     main->AddInst(Inst::InstBuilder(Opcode::JMP, VREG(7)));
-    main->AddInst(Inst::InstBuilder(Opcode::JLE, VREG(6), main->GetLocalVariable("__var__"), VREG(8)));
-    main->AddInst(Inst::InstBuilder(Opcode::MOV, main->GetLocalVariable("__var__"), VREG(11)));
+    main->AddInst(Inst::InstBuilder(Opcode::JLE, VREG(6), main->GetLocalVariable("__var__"), VREG(3)));
+    main->AddInst(Inst::InstBuilder(Opcode::CALL_INTRINSIC_OUTPUT, VREG(0), VREG(11)));
     main->AddInst(Inst::InstBuilder(Opcode::JMP, VREG(7)));
-    main->AddInst(Inst::InstBuilder(Opcode::MOV, main->GetLocalVariable("__var__"), VREG(12)));
+    main->AddInst(Inst::InstBuilder(Opcode::CALL_INTRINSIC_OUTPUT, VREG(0), VREG(12)));
     main->AddInst(Inst::InstBuilder(Opcode::FINALIZE_VM));
 
     Runtime r(&p);
     r.InterpretationLoop();
-
-    // l0->Dump();
 }

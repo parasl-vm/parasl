@@ -16,14 +16,14 @@
     _(JGT /* dst_inst_index:vreg src1:vreg > src2:vreg */)                                        \
     _(JGE /* dst_inst_index:vreg src1:vreg >= src2:vreg */)                                       \
     _(JMP /* dst_inst_index:vreg */)                                                              \
-    _(FINALIZE_VM)
 
 enum class Opcode
 {
 #define INST_TYPES(op, ...) op,
     OPCODES_LIST(INST_TYPES)
 #undef INST_TYPES
-        NUM_OPCODES
+    FINALIZE_VM,
+    NUM_OPCODES
 };
 
 #endif // OPCODES_H

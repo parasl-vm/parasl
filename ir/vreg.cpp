@@ -2,57 +2,6 @@
 #include "function.h"
 #include "layer.h"
 
-int32_t VReg::GetInt()
-{
-    if (type_ == VRegType::INT)
-        return static_cast<VRegDefaultInt*>(this)->GetValue();
-    return 0;
-}
-
-int64_t VReg::GetCustomInt()
-{
-    if (type_ == VRegType::CUSTOM_INT)
-        return static_cast<VRegCustomInt*>(this)->GetValue();
-    return 0;
-}
-
-double VReg::GetDouble()
-{
-    if (type_ == VRegType::DOUBLE)
-        return static_cast<VRegDouble*>(this)->GetValue();
-    return 0;
-}
-
-uintptr_t VReg::GetPointer()
-{
-    assert(type_ == VRegType::OBJECT_TYPE);
-    return static_cast<VRegObject*>(this)->GetValue();
-}
-
-void VReg::SetInt(int32_t value)
-{
-    assert(type_ == VRegType::INT);
-    static_cast<VRegDefaultInt*>(this)->SetValue(value);
-}
-
-void VReg::SetCustomInt(int64_t value)
-{
-    assert(type_ == VRegType::CUSTOM_INT);
-    static_cast<VRegCustomInt*>(this)->SetValue(value);
-}
-
-void VReg::SetDouble(double value)
-{
-    assert(type_ == VRegType::DOUBLE);
-    static_cast<VRegDouble*>(this)->SetValue(value);
-}
-
-void VReg::SetPointer(uintptr_t value)
-{
-    assert(type_ == VRegType::OBJECT_TYPE);
-    static_cast<VRegObject*>(this)->SetValue(value);
-}
-
 void VReg::Dump()
 {
     std::cout << "{" << name_ << ", owner ";
@@ -78,7 +27,7 @@ void VReg::Dump()
         break;
     case VRegType::OBJECT_TYPE:
         // TODO(itrubachev) change to dumping object
-        std::cout << "OBJECT, " << GetPointer();
+        std::cout << "OBJECT, " /* << GetPointer() */;
         break;
     default:
         std::cout << "UNINITIALIZED";
