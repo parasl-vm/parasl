@@ -40,7 +40,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # add_subdirectory(lexer)
-# add_subdirectory(runtime)
+add_subdirectory(runtime)
 # add_subdirectory(parser)
 add_subdirectory(ir)
 

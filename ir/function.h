@@ -1,8 +1,8 @@
 #ifndef FUNCTION_H
 #define FUNCTION_H
 
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 #include <variant>
 
 #include "inst.h"
@@ -10,13 +10,16 @@
 class Class;
 class Layer;
 
-class Function {
-public:
-    Function(std::string name) : name_(name) {}
+class Function
+{
+  public:
+    Function(std::string name) : name_(name)
+    {
+    }
     void AddInst(Inst* inst)
     {
         inst->SetFunction(this);
-        for (auto input: inst->GetInputs()) {
+        for (auto input : inst->GetInputs()) {
             assert(input != nullptr);
             input->SetFunction(this);
             if (input->GetName() != NO_NAME) {
@@ -29,6 +32,11 @@ public:
     const std::vector<Inst*>& GetInsts()
     {
         return insts_;
+    }
+
+    Inst* GetInst(uint32_t index)
+    {
+        return insts_[index];
     }
 
     template <typename Type>
@@ -46,7 +54,7 @@ public:
         return nullptr;
     }
 
-    void SetEmptyLocalVariable(std::string name, VReg *new_vreg)
+    void SetEmptyLocalVariable(std::string name, VReg* new_vreg)
     {
         assert(local_vars_.find(name) != local_vars_.end());
         assert(local_vars_[name]->GetType() == VRegType::UNINITIALIZED);
@@ -83,11 +91,11 @@ public:
 
     ACCESSOR_MUTATOR(name_, Name, std::string)
 
-private:
+  private:
     std::vector<Inst*> insts_;
     std::unordered_map<std::string, VReg*> local_vars_;
-    std::string name_ = "no name";
+    std::string name_ = NO_NAME;
     std::variant<Class*, Layer*> owner_;
 };
 
-#endif  // FUNCTION_H
+#endif // FUNCTION_H

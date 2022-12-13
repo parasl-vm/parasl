@@ -2,22 +2,25 @@
 #include "function.h"
 #include "layer.h"
 
-int32_t VReg::GetDefaultInt()
+int32_t VReg::GetInt()
 {
-    assert(type_ == VRegType::INT);
-    return static_cast<VRegDefaultInt*>(this)->GetValue();
+    if (type_ == VRegType::INT)
+        return static_cast<VRegDefaultInt*>(this)->GetValue();
+    return 0;
 }
 
 int64_t VReg::GetCustomInt()
 {
-    assert(type_ == VRegType::CUSTOM_INT);
-    return static_cast<VRegCustomInt*>(this)->GetValue();
+    if (type_ == VRegType::CUSTOM_INT)
+        return static_cast<VRegCustomInt*>(this)->GetValue();
+    return 0;
 }
 
 double VReg::GetDouble()
 {
-    assert(type_ == VRegType::DOUBLE);
-    return static_cast<VRegDouble*>(this)->GetValue();
+    if (type_ == VRegType::DOUBLE)
+        return static_cast<VRegDouble*>(this)->GetValue();
+    return 0;
 }
 
 uintptr_t VReg::GetPointer()
@@ -26,7 +29,7 @@ uintptr_t VReg::GetPointer()
     return static_cast<VRegObject*>(this)->GetValue();
 }
 
-void VReg::SetDefaultInt(int32_t value)
+void VReg::SetInt(int32_t value)
 {
     assert(type_ == VRegType::INT);
     static_cast<VRegDefaultInt*>(this)->SetValue(value);
@@ -65,7 +68,7 @@ void VReg::Dump()
     switch (type_)
     {
     case VRegType::INT:
-        std::cout << "DEFAULT INT, " << GetDefaultInt();
+        std::cout << "DEFAULT INT, " << GetInt();
         break;
     case VRegType::CUSTOM_INT:
         std::cout << "CUSTOM INT, " << GetCustomInt();

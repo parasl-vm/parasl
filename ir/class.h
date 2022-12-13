@@ -9,7 +9,8 @@ class Class {
 public:
 
 private:
-    // or unordered_map, idk
+    std::unordered_map<std::string, Function*> methods_;
+    std::unordered_map<std::string, VReg*> fields_;
 };
 
 #endif  // CLASS_H

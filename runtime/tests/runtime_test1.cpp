@@ -1,12 +1,10 @@
 #include "gtest/gtest.h"
 
-#include "ir/program.h"
+#include "runtime/runtime.h"
 
-// #define INST Inst::InstBuilder // linter warnings
 #define VREG VReg::VRegBuilder
 
-
-TEST(IR_BUILDER_TEST, TEST_1)
+TEST(RUNTIME_TEST, TEST_1)
 {
     // layer(0, "square") {
     //   v0 : int = input(0);
@@ -21,17 +19,21 @@ TEST(IR_BUILDER_TEST, TEST_1)
     p.AddLayer("square");
     Layer *l0 = p.GetZeroLayer();
     Function *main = l0->GetFunction("main");
-    VReg* vreg_tmp = VREG(VRegType::UNINITIALIZED); // not necessary
+    VReg* vreg_tmp = VREG(VRegType::INT); // not necessary
     main->AddInst(Inst::InstBuilder(Opcode::CALL_INTRINSIC_INPUT, VREG(0),
                   vreg_tmp /* or VREG_EMPTY("v_tmp") */));
     main->AddInst(Inst::InstBuilder(Opcode::MOV, VREG(VRegType::INT, "v0"),
                   vreg_tmp /* or main->GetLocalVariable("v_tmp") */));
     main->AddInst(Inst::InstBuilder(Opcode::CALL_INTRINSIC_OUTPUT, VREG(0), main->GetLocalVariable("v0")));
+    main->AddInst(Inst::InstBuilder(Opcode::FINALIZE_VM));
+    
+    Runtime r(&p);
+    r.InterpretationLoop();
 
-    l0->Dump();
+    // l0->Dump();
 }
 
-TEST(IR_BUILDER_TEST, TEST_2)
+TEST(RUNTIME_TEST, TEST_2)
 {
     // v_1 = 3.5 + 7 * 5.75 + (1 + 0.6) / 2;
     // ___var___: int(21) = (1 + 5);
@@ -63,10 +65,13 @@ TEST(IR_BUILDER_TEST, TEST_2)
     main->AddInst(Inst::InstBuilder(Opcode::ADD, tmp_vregs[5], VREG(1), VREG(5)));
     main->AddInst(Inst::InstBuilder(Opcode::MOV, VREG(VRegType::CUSTOM_INT, "__var__", 21), tmp_vregs[5]));
 
-    l0->Dump();
+    // Runtime r(&p);
+    // r.InterpretationLoop();
+
+    // l0->Dump();
 }
 
-TEST(IR_BUILDER_TEST, TEST_3)
+TEST(RUNTIME_TEST, TEST_3)
 {
     // __var__ = 6
     // v_1 = 44.55
@@ -100,11 +105,15 @@ TEST(IR_BUILDER_TEST, TEST_3)
     main->AddInst(Inst::InstBuilder(Opcode::CALL_INTRINSIC_OUTPUT, VREG(0), VREG(45)));
     main->AddInst(Inst::InstBuilder(Opcode::JMP, VREG(7)));
     main->AddInst(Inst::InstBuilder(Opcode::CALL_INTRINSIC_OUTPUT, VREG(0), main->GetLocalVariable("v_1")));
+    main->AddInst(Inst::InstBuilder(Opcode::FINALIZE_VM));
 
-    l0->Dump();
+    Runtime r(&p);
+    r.InterpretationLoop();
+
+    // l0->Dump();
 }
 
-TEST(IR_BUILDER_TEST, TEST_4)
+TEST(RUNTIME_TEST, TEST_4)
 {
     // __var__ = 6
     // if (__var__ <= 9)
@@ -138,48 +147,10 @@ TEST(IR_BUILDER_TEST, TEST_4)
     main->AddInst(Inst::InstBuilder(Opcode::MOV, main->GetLocalVariable("__var__"), VREG(11)));
     main->AddInst(Inst::InstBuilder(Opcode::JMP, VREG(7)));
     main->AddInst(Inst::InstBuilder(Opcode::MOV, main->GetLocalVariable("__var__"), VREG(12)));
+    main->AddInst(Inst::InstBuilder(Opcode::FINALIZE_VM));
 
-    l0->Dump();
+    Runtime r(&p);
+    r.InterpretationLoop();
+
+    // l0->Dump();
 }
-
-TEST(IR_BUILDER_TEST, TEST_5)
-{
-    // for (x in 0:5) {
-    //     for (y in 0:8:2)
-    //         output(0, x + y);
-    // 
-    //     x = 1 < v0 <= 89; // what does this mean? Skipping
-    //     output(0, 2 * x);
-    // 
-    //     while (0 == 1)
-    //         while (1 == 1)
-    //             output(0, x - y);
-    // }
-    // -----------------------------------------------------------
-    //    Loop header
-    // 0. MOV x 0
-    // 1. JLT 4 x 5
-    // 2. ADD x x 1
-    // 3. JLT 4 x 5
-    //    Loop body
-    //        Loop header
-    // 4.     MOV y 0
-    // 5.     JLT 8 y 8
-    // 6.     ADD y y 2
-    // 7.     JLT 8 y 8
-    // 8.     Loop body
-    // 9.         ADD tmp1 x y   
-    // 9.         CALL_INTRINSIC_OUTPUT 0 tmp1
-    // 10.        JMP 6
-    // 11.    MUL tmp2 2 x
-    // 12.    CALL_INTRINSIC_OUTPUT 0 tmp2
-    // 13.    Loop header
-    // 14.    MOV tmp3 0
-    // 15.    JEQ tmp3 1
-    //            Loop body
-    //            ...
-    //            JMP 15
-    // ...
-    // JMP 2
-}
-
