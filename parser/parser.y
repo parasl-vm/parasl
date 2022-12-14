@@ -1,556 +1,628 @@
-// %language "c++"
-
-%define parse.error verbose
+%skeleton "lalr1.cc"
+%require "3.2"
+%language "c++"
 
 %debug
 
+%define parse.assert
+%define parse.error verbose
+%define api.namespace {frontend::parser}
+%define api.parser.class {Parser}
+// %define api.token.constructor
+%define api.value.type variant
+
+%parse-param {Lexer &scanner}
+%parse-param {Driver &driver}
+
 %code requires {
+    #include "ast/ArrayInitNode.h"
     #include "ast/AssignmentNode.h"
-    #include "ast/BinaryOpNode.h"
     #include "ast/CompoundStatementNode.h"
     #include "ast/DeclarationNode.h"
     #include "ast/ExpressionNode.h"
     #include "ast/ForStatementNode.h"
     #include "ast/FunctionCallNode.h"
+    #include "ast/FunctionDefNode.h"
     #include "ast/IDNode.h"
     #include "ast/IfStatementNode.h"
     #include "ast/LayerNode.h"
     #include "ast/LiteralNode.h"
     #include "ast/ReturnStatementNode.h"
     #include "ast/StatementNode.h"
-    #include "ast/TypeNode.h"
+    #include "ast/TypeNodes.h"
     #include "ast/WhileStatementNode.h"
+    #include "driver.h"
     #include <iostream>
+    #include "lexer.h"
+    #include "parser.hpp"
 
-    // #undef yylex
-    // #define yylex driver.lexer->lex
-
-    extern int yylineno;
-    extern int yylex();
-    extern FILE* yyin;
-
-    void yyerror(const char *s);
+    static frontend::parser::Parser::symbol_type yylex(frontend::lexer::Lexer &scanner,
+                                                       frontend::parser::Driver &driver) {
+        return scanner.getNextToken();
+    }
 }
 
-%union {
-    // std::vector<FunctionArgument>   args_decl_t;
-    // std::vector<ASTNode *>          args_t;
-    // AssignmentNode *                assignment_node_t;
-    // CompoundStatementNode *         compound_stmt_node_t;
-    // ExpressionNode *                expression_node_t;
-    lexer::IDNode *                        id_node_t;
-    // IterationRange *                iter_range_node_t;
-    // LayerNode *                     layer_node_t;
-    lexer::LiteralNode *                   literal_node_t;
-    // PrimitiveTypeNode *             primitive_type_t;
-    // StatementNode *                 stmt_node_t;
-    lexer::TypeNode *                      type_node_t;
-}
+// terminals
 
 %token EQ NE GE LE
 %token DOUBLE_DOT
-%token LAYER REPEAT GLUE BIND
+%token LAYER
 %token IF ELSE WHILE FOR IN RETURN
-%token CHAR // lexer::Token::CHAR
-%token INT // lexer::Token::INT
-%token FLOAT // lexer::Token::FLOAT
-%token DOUBLE // lexer::Token::DOUBLE
-%token VECTOR // lexer::Token::VECTOR
 
+// types
+%token CHAR INT FLOAT DOUBLE VECTOR
 
-%token STRING
-%token INT_VAL // lexer::Token::INT_VAL
-%token FLOAT_VAL
-%token ID // lexer::Token::ID
-%token INPUT // lexer::Token::INPUT
-%token OUTPUT // lexer::Token::OUTPUT
+%token <frontend::parser::IDNode>   ID
 
-// %type<args_decl_t>          ARGS_DECL
-// %type<args_t>               ARGS
-// %type<assignment_node_t>    ASSIGNMENT
-// %type<compound_stmt_node_t> STMTS
-// %type<expression_node_t>    EXPR EXPR2 TERM VAL // OPT_RET_VAL
-// %type<id_node_t>            ID
-// %type<iter_range_node_t>    ITER_RANGE
-// %type<layer_node_t>         PROGRAM // LAYER_DEF
-// %type<literal_node_t>       LITERAL INT_VAL // STRING FLOAT_VAL
-// %type<primitive_type_t>     PRIMITIVE
-// %type<stmt_node_t>          STMT STMT_CLOSED // STMT_OPENED
-// %type<type_node_t>          NON_FUNC_TYPE PRIMITIVE // OPT_NON_FUNC_TYPE
+// values
+%token <std::string>                STRING
+%token <int64_t>                    INT_VAL
+%token <double>                     FLOAT_VAL
+
+// special functions
+%token GLUE INPUT
+
+// nonterminals
+%nterm <std::vector<LayerNode *>>                   program
+%nterm <frontend::parser::LayerNode *>              layer_def
+%nterm <frontend::parser::CompoundStatementNode *>  stmts expanded_scope
+%nterm <frontend::parser::StatementNode *>          stmt stmt_closed stmt_opened
+%nterm <frontend::parser::AssignmentNode *>         assignment
+%nterm <frontend::parser::IterationRange *>         iter_range
+
+%nterm <frontend::parser::ExpressionNode *>         expr expr2 term val opt_ret_val unnamed_extended_expr extended_expr
+%nterm <frontend::parser::BinaryOpNode *>           cond_expr
+
+%nterm <std::vector<ExpressionNode *>>              args opt_args
+%nterm <frontend::parser::FunctionDefNode *>        function_def_scoped function_def
+%nterm <frontend::parser::GlueCallNode *>           glue_call named_glue_call
+%nterm <frontend::parser::InputCallNode *>          single_input_call seq_input_call input_call typed_input_call
+
+%nterm <frontend::parser::LiteralNode *>            literal
+%nterm <frontend::parser::PrimitiveTypeNode *>      primitive
+%nterm <frontend::parser::TypeNode *>               non_func_type var_type arg_type opt_arg_type
+%nterm <frontend::parser::SequenceTypeNode *>       sequence_type primitive_seq_type
+%nterm <frontend::parser::StructTypeNode *>         struct_type
+%nterm <frontend::parser::FunctionTypeNode *>       func_type func_type_as_arg
+%nterm <frontend::parser::ArrayInitializerNode *>   array_init
+%nterm <frontend::parser::ObjectAccessNode *>       obj_access composite_access
+
+%nterm <std::vector<frontend::parser::FunctionArgument>>                            args_decl opt_args_decl
+%nterm <std::pair<frontend::parser::ExpressionNode *, frontend::parser::IDNode *>>  single_glue_arg
+%nterm <frontend::parser::NamedGlueArgs>                                            spec_glue_args
+%nterm <std::pair<frontend::parser::ExpressionNode *, frontend::parser::TypeNode *>>    assignment_reminder typed_reminder untyped_reminder
+
+// operators rules
 
 %left '+' '-'
 %left '*' '/'
 %left '<' '>'
 %left EQ NE GE LE
 
-%start PROGRAM
+%start program
+
+%locations
 
 %%
 
-PROGRAM         : LAYERS
-                | STMTS
+program         : layers
+                | stmts
                 {
-                    // $$ = new CompoundStatementNode();
-                    // $$ = new LayerNode(0, "", $$);
-                    std::cout << "[PARSER]: PROGRAM -> STMTS" << std::endl;
+                    std::cout << "[PARSER]: program -> stmts" << std::endl;
+                    driver.addLayer(new frontend::parser::LayerNode(0, "", $1));
                 }
 ;
 
-LAYERS          : LAYERS LAYER_DEF
+layers          : layer_def
                 {
-                    std::cout << "[PARSER]: LAYERS -> LAYERS LAYER_DEF" << std::endl;
+                    std::cout << "[PARSER]: layers -> layer_def" << std::endl;
                 }
-                | LAYER_DEF
+                | layers layer_def
                 {
-                    std::cout << "[PARSER]: LAYERS -> LAYER_DEF" << std::endl;
+                    std::cout << "[PARSER]: layers -> layers layer_def" << std::endl;
                 }
 ;
 
-LAYER_DEF       : LAYER '(' INT_VAL ',' STRING ')' '{' STMTS '}'
+layer_def       : LAYER '(' INT_VAL ',' STRING ')' '{' stmts '}'
                 {
-                    std::cout << "[PARSER]: LAYER ( INT_VAL , STRING ) { STMTS }" << std::endl;
-//                     $$ = new CompoundStatementNode();
-//                     $$ = new LayerNode($3, $5, $$);
+                    std::cout << "[PARSER]: LAYER ( INT_VAL , STRING ) { stmts }" << std::endl;
+                    $$ = new frontend::parser::CompoundStatementNode();
+                    driver.addLayer(new frontend::parser::LayerNode($3, $5, $$));
                 }
 ;
 
 /* statements syntax */
 
-STMTS           : STMT
+stmts           : stmt
                 {
-                    // $$.push_back($1);
                     std::cout << "[PARSER]: STMTS1" << std::endl;
+                    $$.push_back($stmt);
                 }
-                | STMTS STMT
+                | stmts stmt
                 {
                     std::cout << "[PARSER]: STMTS2" << std::endl;
-                    // $$ = $1;
-                    // $$.push_back($2);
+                    $$ = $1;
+                    $$.push_back($stmt);
                 }
 ;
 
-STMT            : STMT_CLOSED
-                | STMT_OPENED
+stmt            : stmt_closed
+                | stmt_opened
 ;
 
-STMT_CLOSED     : EXPR ';'
+stmt_closed     : expr ';'
                 {
-                    std::cout << "[PARSER]: STMT_CLOSED -> EXPR ;" << std::endl;
+                    std::cout << "[PARSER]: stmt_closed -> expr ;" << std::endl;
+                    $$ = $1;
                 }
-                | RETURN OPT_RET_VAL ';'
+                | RETURN opt_ret_val ';'
                 {
-                    std::cout << "[PARSER]: STMT_CLOSED -> RETURN OPT_RET_VAL  ;" << std::endl;
+                    std::cout << "[PARSER]: stmt_closed -> RETURN opt_ret_val  ;" << std::endl;
+                    $$ = new frontend::parser::ReturnStatementNode($2);
                 }
-                | ASSIGNMENT
-                | OUTPUT '(' ARGS ')' ';'
+                | assignment
+                | IF '(' expr ')' '{' stmts '}' ELSE '{' stmts '}'
                 {
-                    std::cout << "[PARSER]: OUTPUT ( ARGS ) ;" << std::endl;
+                    std::cout << "[PARSER]: IF ( expr ) { stmts } ELSE { stmts }" << std::endl;
+                    $$ = new frontend::parser::IfStatementNode($3, $6, $10);
                 }
-                | IF '(' EXPR ')' '{' STMTS '}' ELSE '{' STMTS '}'
+                | IF '(' expr ')' '{' stmts '}' ELSE stmt_closed
                 {
-                    std::cout << "[PARSER]: IF ( EXPR ) { STMTS } ELSE { STMTS }" << std::endl;
-                //     $$ = new IfStatementNode($3, $5, $7);
+                    std::cout << "[PARSER]: IF ( expr ) { stmts } ELSE stmt_closed" << std::endl;
+                    $$ = new frontend::parser::IfStatementNode($3, $6, $9);
                 }
-                | IF '(' EXPR ')' '{' STMTS '}' ELSE STMT_CLOSED
+                | IF '(' expr ')' stmt_closed ELSE '{' stmts '}'
                 {
-                    std::cout << "[PARSER]: IF ( EXPR ) { STMTS } ELSE STMT_CLOSED" << std::endl;
-                //     $$ = new IfStatementNode($3, $5, $7);
+                    std::cout << "[PARSER]: IF ( expr ) stmt_closed ELSE { stmts }" << std::endl;
+                    $$ = new frontend::parser::IfStatementNode($3, $5, $8);
                 }
-                | IF '(' EXPR ')' STMT_CLOSED ELSE '{' STMTS '}'
+                | IF '(' expr ')' stmt_closed ELSE stmt_closed
                 {
-                    std::cout << "[PARSER]: IF ( EXPR ) STMT_CLOSED ELSE { STMTS }" << std::endl;
-                //     $$ = new IfStatementNode($3, $5, $7);
+                    std::cout << "[PARSER]: IF ( expr ) stmt_closed ELSE stmt_closed" << std::endl;
+                    $$ = new frontend::parser::IfStatementNode($3, $5, $7);
                 }
-                | IF '(' EXPR ')' STMT_CLOSED ELSE STMT_CLOSED
+                | WHILE '(' expr ')' '{' stmts '}'
                 {
-                    std::cout << "[PARSER]: IF ( EXPR ) STMT_CLOSED ELSE STMT_CLOSED" << std::endl;
-                //     $$ = new IfStatementNode($3, $5, $7);
+                    std::cout << "[PARSER]: WHILE ( expr ) { stmts }" << std::endl;
+                    $$ = new frontend::parser::WhileStatementNode($3, $6);
                 }
-                | WHILE '(' EXPR ')' '{' STMTS '}'
+                | WHILE '(' expr ')' stmt_closed
                 {
-                    std::cout << "[PARSER]: WHILE ( EXPR ) { STMTS }" << std::endl;
-                //     $$ = new WhileStatementNode($3, $5);
+                    std::cout << "[PARSER]: WHILE ( expr ) stmt_closed" << std::endl;
+                    $$ = new frontend::parser::WhileStatementNode($3, $5);
                 }
-                | WHILE '(' EXPR ')' STMT_CLOSED
+                | FOR '(' iter_range ')' '{' stmts '}'
                 {
-                    std::cout << "[PARSER]: WHILE ( EXPR ) STMT_CLOSED" << std::endl;
-                //     $$ = new WhileStatementNode($3, $5);
+                    std::cout << "[PARSER]: FOR ( iter_range ) { stmts }" << std::endl;
+                    $$ = new frontend::parser::ForStatementNode($3, $6);
                 }
-                | FOR '(' ITER_RANGE ')' '{' STMTS '}'
+                | FOR '(' iter_range ')' stmt_closed
                 {
-                    std::cout << "[PARSER]: FOR ( ITER_RANGE ) { STMTS }" << std::endl;
-                //     $$ = new ForStatementNode($3, $5);
-                }
-                | FOR '(' ITER_RANGE ')' STMT_CLOSED
-                {
-                    std::cout << "[PARSER]: FOR ( ITER_RANGE ) STMT_CLOSED" << std::endl;
-                //     $$ = new ForStatementNode($3, $5);
+                    std::cout << "[PARSER]: FOR ( iter_range ) stmt_closed" << std::endl;
+                    $$ = new frontend::parser::ForStatementNode($3, $5);
                 }
 ;
 
-OPT_RET_VAL     : %empty
+opt_ret_val     : %empty
                 {
-                    std::cout << "[PARSER]: OPT_RET_VAL -> empty" << std::endl;
-                //     $$ = new ExpressionNode(nullptr);
+                    std::cout << "[PARSER]: opt_ret_val -> empty" << std::endl;
                 }
-                | EXPR
+                | expr
 ;
 
-ASSIGNMENT              : ID ASSIGNMENT_REMINDER ';'
-;
-
-ASSIGNMENT_REMINDER     : ':' TYPED_REMINDER
+assignment              : ID assignment_reminder ';'
                         {
-                            std::cout << "[PARSER]: : TYPED_REMINDER" << std::endl;
+                            std::cout << "[PARSER]: assignment -> D assignment_reminder ;" << std::endl;
+                            $$ = new frontend::parser::AssignmentNode($1, $2.first, $2.second);
                         }
-                        | '=' UNTYPED_REMINDER
+                        | obj_access '=' untyped_reminder ';'
                         {
-                            std::cout << "[PARSER]: = UNTYPED_REMINDER" << std::endl;
-                        }
-                        | OBJ_ACCESSORS '=' UNTYPED_REMINDER
-                        {
-                            std::cout << "[PARSER]: OBJ_ACCESSORS = UNTYPED_REMINDER" << std::endl;
+                            std::cout << "[PARSER]: assignment -> obj_access = untyped_reminder" << std::endl;
+                            $$ = new frontend::parser::AssignmentNode($1, $3.first, nullptr);
                         }
 ;
 
-TYPED_REMINDER          : VAR_TYPE '=' UNNAMED_EXTENDED_EXPR
+assignment_reminder     : ':' typed_reminder
                         {
-                            std::cout << "[PARSER]: VAR_TYPE = UNNAMED_EXTENDED_EXPR" << std::endl;
+                            std::cout << "[PARSER]: assignment_reminder -> : typed_reminder" << std::endl;
+                            $$ = $2;
                         }
-                        | FUNC_TYPE '=' FUNCTION_DEF
+                        | '=' untyped_reminder
                         {
-                            std::cout << "[PARSER]: FUNC_TYPE = FUNCTION_DEF" << std::endl;
-                        }
-;
-
-UNTYPED_REMINDER        : UNNAMED_EXTENDED_EXPR
-                        {
-                            std::cout << "[PARSER]: UNNAMED_EXTENDED_EXPR" << std::endl;
-                        }
-                        | FUNCTION_DEF_SCOPED
-                        {
-                            std::cout << "[PARSER]: FUNCTION_DEF_SCOPED" << std::endl;
-                        }
-                        | TYPED_INPUT_CALL
-                        {
-                            std::cout << "[PARSER]: TYPED_INPUT_CALL" << std::endl;
-                        }
-                        | NAMED_GLUE_CALL
-                        {
-                            std::cout << "[PARSER]: NAMED_GLUE_CALL" << std::endl;
+                            std::cout << "[PARSER]: assignment_reminder -> = untyped_reminder" << std::endl;
+                            $$ = $2;
                         }
 ;
 
-STMT_OPENED     : IF '(' EXPR ')' OPT_SCOPE
+typed_reminder          : var_type '=' unnamed_extended_expr
+                        {
+                            std::cout << "[PARSER]: var_type = unnamed_extended_expr" << std::endl;
+                            $$ = {$3, $1};
+                        }
+                        | func_type '=' function_def
+                        {
+                            std::cout << "[PARSER]: func_type = function_def" << std::endl;
+                            $$ = {$3, $1};
+                        }
+;
+
+untyped_reminder        : unnamed_extended_expr
+                        {
+                            std::cout << "[PARSER]: unnamed_extended_expr" << std::endl;
+                            $$ = {$1, nullptr};
+                        }
+                        | function_def_scoped
+                        {
+                            std::cout << "[PARSER]: function_def_scoped" << std::endl;
+                            $$ = {$1, nullptr};
+                        }
+                        | typed_input_call
+                        {
+                            std::cout << "[PARSER]: typed_input_call" << std::endl;
+                            $$ = {$1, nullptr};
+                        }
+                        | named_glue_call
+                        {
+                            std::cout << "[PARSER]: named_glue_call" << std::endl;
+                            $$ = {$1, nullptr};
+                        }
+;
+
+stmt_opened     : IF '(' expr ')' expanded_scope
                 {
-                    std::cout << "[PARSER]: IF ( EXPR ) OPT_SCOPE" << std::endl;
-//                     $$ = new IfStatementNode($3, $5);
+                    std::cout << "[PARSER]: IF ( expr ) expanded_scope" << std::endl;
+                    $$ = new frontend::parser::IfStatementNode($3, $5);
                 }
-                | IF '(' EXPR ')' STMT_CLOSED ELSE STMT_OPENED
+                | IF '(' expr ')' stmt_closed ELSE stmt_opened
                 {
-                    std::cout << "[PARSER]: IF ( EXPR ) STMT_CLOSED ELSE STMT_OPENED" << std::endl;
-//                     $$ = new IfStatementNode($3, $5, $7);
+                    std::cout << "[PARSER]: IF ( expr ) stmt_closed ELSE stmt_opened" << std::endl;
+                    $$ = new frontend::parser::IfStatementNode($3, $5, $7);
                 }
-                | WHILE '(' EXPR ')' STMT_OPENED
+                | WHILE '(' expr ')' stmt_opened
                 {
-                    std::cout << "[PARSER]: WHILE ( EXPR ) STMT_OPENED" << std::endl;
-//                     $$ = new WhileStatementNode($3, $5);
+                    std::cout << "[PARSER]: WHILE ( expr ) stmt_opened" << std::endl;
+                    $$ = new frontend::parser::WhileStatementNode($3, $5);
                 }
-                | FOR '(' ITER_RANGE ')' STMT_OPENED
+                | FOR '(' iter_range ')' stmt_opened
                 {
-                    std::cout << "[PARSER]: FOR ( ITER_RANGE ) STMT_OPENED" << std::endl;
-//                     $$ = new ForStatementNode($3, $5);
+                    std::cout << "[PARSER]: FOR ( iter_range ) stmt_opened" << std::endl;
+                    $$ = new frontend::parser::ForStatementNode($3, $5);
                 }
 ;
 
-OPT_SCOPE       : STMT
-                | '{' STMTS '}'
+expanded_scope  : stmt
                 {
-                    std::cout << "[PARSER]: { STMTS }" << std::endl;
+                    $$ = new frontend::parser::CompoundStatementNode($1);
+                }
+                | '{' stmts '}'
+                {
+                    std::cout << "[PARSER]: { stmts }" << std::endl;
+                    $$ = $2;
                 }
 ;
 
-ITER_RANGE      : ID IN ID
+iter_range      : ID IN ID
                 {
                     std::cout << "[PARSER]: ID IN ID" << std::endl;
-                //     $$ = new SequenceIterationRange($1, $3);
+                    $$ = new frontend::parser::SequenceIterationRange($1, $3);
                 }
                 | ID IN INT_VAL ':' INT_VAL
                 {
                     std::cout << "[PARSER]: ID IN INT_VAL : INT_VAL" << std::endl;
-                //     $$ = new NumericIterationRange($1, $3, $5);
+                    $$ = new frontend::parser::NumericIterationRange($1, $3, $5);
                 }
                 | ID IN INT_VAL ':' INT_VAL ':' INT_VAL
                 {
                     std::cout << "[PARSER]: ID IN INT_VAL : INT_VAL : INT_VAL" << std::endl;
-                //     $$ = new NumericIterationRange($1, $3, $5, $7);
+                    $$ = new frontend::parser::NumericIterationRange($1, $3, $5, $7);
                 }
 ;
 
 /* types syntax */
 
-VAR_TYPE        : NON_FUNC_TYPE
-                | STRUCT_TYPE
+var_type        : non_func_type
+                | struct_type
 ;
 
-NON_FUNC_TYPE   : PRIMITIVE
+non_func_type   : primitive
                 | INT '(' INT_VAL ')'
                 {
                     std::cout << "[PARSER] INT ( INT_VAL )" << std::endl;
-                //     $$ = new PrimitiveTypeNode(PrimitiveType::INT, $3);
+                    $$ = new frontend::parser::PrimitiveTypeNode(PrimitiveType::INT, $3);
                 }
-                | SEQUENCE_TYPE
+                | sequence_type
 ;
 
-PRIMITIVE       : CHAR
+primitive       : CHAR
                 {
-                    // $$ = new PrimitiveTypeNode(PrimitiveType::CHAR, {});
-                    std::cout << "[PARSER]: PRIMITIVE CHAR" << std::endl;
+                    std::cout << "[PARSER]: primitive CHAR" << std::endl;
+                    $$ = new frontend::parser::PrimitiveTypeNode(PrimitiveType::CHAR, {});
                 }
                 | INT
                 {
-                    // $$ = new PrimitiveTypeNode(PrimitiveType::INT, {});
-                    std::cout << "[PARSER]: PRIMITIVE INT" << std::endl;
+                    $$ = new frontend::parser::PrimitiveTypeNode(PrimitiveType::INT, {});
+                    std::cout << "[PARSER]: primitive INT" << std::endl;
                 }
                 | FLOAT
                 {
-                    // $$ = new PrimitiveTypeNode(PrimitiveType::FLOAT, {});
-                    std::cout << "[PARSER]: PRIMITIVE FLOAT" << std::endl;
+                    $$ = new frontend::parser::PrimitiveTypeNode(PrimitiveType::FLOAT, {});
+                    std::cout << "[PARSER]: primitive FLOAT" << std::endl;
                 }
                 | DOUBLE
                 {
-                    // $$ = new PrimitiveTypeNode(PrimitiveType::DOUBLE, {});
-                    std::cout << "[PARSER]: PRIMITIVE DOUBLE" << std::endl;
+                    $$ = new frontend::parser::PrimitiveTypeNode(PrimitiveType::DOUBLE, {});
+                    std::cout << "[PARSER]: primitive DOUBLE" << std::endl;
                 }
 ;
 
-SEQUENCE_TYPE   : ARG_TYPE '[' INT_VAL ']'
+// TODO(dslynko): allow arrays of functions (substitute 'var_type' with 'arg_type')
+sequence_type   : var_type '[' INT_VAL ']'
                 {
-                    std::cout << "[PARSER] ARG_TYPE [ INT_VAL ]" << std::endl;
-                //     $$ = new SequenceTypeNode(AggregateType::ARRAY, $1, $3);
+                    std::cout << "[PARSER] var_type [ INT_VAL ]" << std::endl;
+                    $$ = new frontend::parser::SequenceTypeNode(AggregateType::ARRAY, $1, $3);
                 }
-                | VECTOR '<' PRIMITIVE ',' INT_VAL '>'
+                | VECTOR '<' primitive ',' INT_VAL '>'
                 {
-                    std::cout << "[PARSER] VECTOR < PRIMITIVE , INT_VAL >" << std::endl;
-                //     $$ = new SequenceTypeNode(AggregateType::VECTOR, $3, $5);
-                }
-;
-
-STRUCT_TYPE     : '{' ARGS_DECL '}'
-                {
-                    std::cout << "[PARSER] STRUCT_TYPE -> { ARGS_DECL }" << std::endl;
+                    std::cout << "[PARSER] VECTOR < primitive , INT_VAL >" << std::endl;
+                    $$ = new frontend::parser::SequenceTypeNode(AggregateType::VECTOR, $3, $5);
                 }
 ;
 
-ARGS_DECL       : ID OPT_ARG_TYPE
+struct_type     : '{' args_decl '}'
                 {
-                    std::cout << "[PARSER]: ARGS_DECL -> ID OPT_ARG_TYPE" << std::endl;
-//                     $$.AddArgument($2, $1);
-                }
-                | ARGS_DECL ',' ID OPT_ARG_TYPE
-                {
-                    std::cout << "[PARSER]: ARGS_DECL -> ARGS_DECL , ID OPT_ARG_TYPE" << std::endl;
-//                     $$ = $1;
-//                     $$.AddArgument($4, $3);
+                    std::cout << "[PARSER] struct_type -> { args_decl }" << std::endl;
+                    $$ = new frontend::parser::StructTypeNode($2);
                 }
 ;
 
-FUNC_TYPE       : '(' ARGS_DECL ')' OPT_ARG_TYPE
+args_decl       : ID opt_arg_type
                 {
-                    std::cout << "[PARSER]: FUNC_TYPE -> ( ARGS_DECL ) OPT_ARG_TYPE" << std::endl;
-                //     $$ = new FunctionTypeNode($4);
+                    std::cout << "[PARSER]: args_decl -> ID opt_arg_type" << std::endl;
+                    $$.AddArgument($2, $1);
+                }
+                | args_decl ',' ID opt_arg_type
+                {
+                    std::cout << "[PARSER]: args_decl -> args_decl , ID opt_arg_type" << std::endl;
+                    $$ = $1;
+                    $$.AddArgument($4, $3);
                 }
 ;
 
-ARG_TYPE        : VAR_TYPE
-                | FUNC_TYPE_AS_ARG
+opt_args_decl   : %empty
+                {
+                    // auto-generate an empty vector
+                }
+                | args_decl
 ;
 
-FUNC_TYPE_AS_ARG    : '(' ')'
+func_type       : '(' opt_args_decl ')' opt_arg_type
+                {
+                    std::cout << "[PARSER]: func_type -> ( opt_args_decl ) opt_arg_type" << std::endl;
+                    $$ = new frontend::parser::FunctionTypeNode($4);
+                }
+;
+
+arg_type        : var_type
+                | func_type_as_arg
+;
+
+func_type_as_arg    : '(' ')'
                     {
-                        std::cout << "[PARSER] FUNC_TYPE_AS_ARG -> ( )" << std::endl;
+                        std::cout << "[PARSER] func_type_as_arg -> ( )" << std::endl;
+                        $$ = new frontend::parser::FunctionTypeNode(nullptr);
                     }
 ;
 
-OPT_ARG_TYPE    : %empty
-                    {
-                        std::cout << "[PARSER]: OPT_ARG_TYPE -> empty" << std::endl;
-//                         $$ = new TypeNode(nullptr);
-                    }
-                    | ':' ARG_TYPE
-                    {
-                        std::cout << "[PARSER]: OPT_ARG_TYPE -> : ARG_TYPE" << std::endl;
-//                         $$ = $2;
-                    }
+opt_arg_type    : %empty
+                {
+                    std::cout << "[PARSER]: opt_arg_type -> empty" << std::endl;
+                    $$ = nullptr;
+                }
+                | ':' arg_type
+                {
+                    std::cout << "[PARSER]: opt_arg_type -> : arg_type" << std::endl;
+                    $$ = $2;
+                }
 ;
 
 /* functions definition syntax */
 
-FUNCTION_DEF    : FUNCTION_DEF_SCOPED
-                | EXPR
-                {
-                    std::cout << "[PARSER]: FUNCTION_DEF -> EXPR" << std::endl;
-                }
+function_def        : function_def_scoped
+                    | expr
+                    {
+                        std::cout << "[PARSER]: function_def -> expr" << std::endl;
+                        $$ = new frontend::parser::FunctionDefNode($1);
+                    }
 ;
 
-FUNCTION_DEF_SCOPED : '{' STMTS '}'
+function_def_scoped : '{' stmts '}'
                     {
-                        std::cout << "[PARSER]: FUNCTION_DEF_SCOPED -> { STMT }" << std::endl;
+                        std::cout << "[PARSER]: function_def_scoped -> { stmt }" << std::endl;
+                        $$ = new frontend::parser::FunctionDefNode($2);
                     }
 ;
 
 /* expressions syntax */
 
-// we extend EXPR with syntax constructs which are impossible to be used in arithmetic and logic expressions
-EXTENDED_EXPR   : UNNAMED_EXTENDED_EXPR
-                | NAMED_GLUE_CALL
+// we extend expr with syntax constructs which are impossible to be used in arithmetic and logic expressions
+extended_expr           : unnamed_extended_expr
+                        | named_glue_call
 ;
 
-UNNAMED_EXTENDED_EXPR   : EXPR
-                        | ARRAY_INIT
-                        | GLUE_CALL
+unnamed_extended_expr   : expr
+                        | array_init
+                        | glue_call
 ;
 
-/* ARRAY_INIT construction may be encountered in the following cases:
+/* array_init construction may be encountered in the following cases:
   - Array/vector initialization/assignment
   - Nested array/vector initialization/assignment, e.g.: int[2][2] = {{1, 2}, {3, 4}};
   - Function argument: array/vector will be initialized in-place
   - Return value if returned type of the function was specified
 */
-ARRAY_INIT      : '{' ARGS '}'
+array_init      : '{' args '}'
                 {
-                    std::cout << "[PARSER]: { ARGS }" << std::endl;
+                    std::cout << "[PARSER]: { args }" << std::endl;
+                    $$ = new frontend::parser::ArrayInitializerNode(std::move($2));
                 }
 ;
 
 // TODO(dslynko): consider supporting chained assignment
 
-EXPR            : EXPR2
-                | COND_EXPR
-                /* | ID '=' EXPR
+expr            : expr2
+                | cond_expr
+                /* | ID '=' expr
                 {
-                    std::cout << "[PARSER]: ID = EXPR" << std::endl;
+                    std::cout << "[PARSER]: ID = expr" << std::endl;
                 } */
 ;
 
-COND_EXPR       : EXPR EQ EXPR
+cond_expr       : expr EQ expr
                 {
                     std::cout << "[PARSER]: EQ" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::EQ, $1, $3);
                 }
-                | EXPR NE EXPR
+                | expr NE expr
                 {
                     std::cout << "[PARSER]: NE" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::NE, $1, $3);
                 }
-                | EXPR GE EXPR
+                | expr GE expr
                 {
                     std::cout << "[PARSER]: GE" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::GE, $1, $3);
                 }
-                | EXPR '>' EXPR
+                | expr '>' expr
                 {
                     std::cout << "[PARSER]: GT" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::GT, $1, $3);
                 }
-                | EXPR LE EXPR
+                | expr LE expr
                 {
                     std::cout << "[PARSER]: LE" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::LE, $1, $3);
                 }
-                | EXPR '<' EXPR
+                | expr '<' expr
                 {
                     std::cout << "[PARSER]: LT" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token:LT, $1, $3);
                 }
 ;
 
-EXPR2           : TERM
-                | TERM '+' EXPR2
+expr2           : term
+                | term '+' expr2
                 {
-                    std::cout << "[PARSER]: " << "TERM + TERM" << std::endl;
-                //     $$ = new BinOpNode(Token::PLUS, $1, $3);
+                    std::cout << "[PARSER]: " << "term + term" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::PLUS, $1, $3);
                 }
-                | TERM '-' EXPR2
+                | term '-' expr2
                 {
-                    std::cout << "[PARSER]: " << "TERM - TERM" << std::endl;
-                //     $$ = new BinOpNode(Token::MINUS, $1, $3);
-                }
-;
-
-TERM            : VAL
-                | '(' EXPR ')'
-                {
-                    std::cout << "[PARSER]: " << "TERM -> ( EXPR )" << std::endl;
-                }
-                | TERM '*' TERM
-                {
-                    std::cout << "[PARSER]: " << "TERM * TERM" << std::endl;
-                //     $$ = new BinOpNode(Token::MUL, $1, $3);
-                }
-                | TERM '/' TERM
-                {
-                    std::cout << "[PARSER]: " << "TERM / TERM" << std::endl;
-                //     $$ = new BinOpNode(Token::DIV, $1, $3);
+                    std::cout << "[PARSER]: " << "term - term" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::MINUS, $1, $3);
                 }
 ;
 
-VAL             : LITERAL
+term            : val
+                | '(' expr ')'
                 {
-                    // $$ = new ExpressionNode($2);
-                    std::cout << "[PARSER]: VAL -> LITERAL" << std::endl;
+                    std::cout << "[PARSER]: " << "term -> ( expr )" << std::endl;
+                    $$ = $2;
+                }
+                | term '*' term
+                {
+                    std::cout << "[PARSER]: " << "term * term" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::MUL, $1, $3);
+                }
+                | term '/' term
+                {
+                    std::cout << "[PARSER]: " << "term / term" << std::endl;
+                    $$ = new frontend::parser::BinOpNode(Token::DIV, $1, $3);
+                }
+;
+
+val             : literal
+                {
+                    std::cout << "[PARSER]: val -> literal" << std::endl;
                 }
                 | ID
                 {
-                    // $$ = new IDNode($1);
-                    std::cout << "[PARSER]: VAL -> ID" << std::endl;
+                    std::cout << "[PARSER]: val -> ID" << std::endl;
                 }
-                | ID '(' ARGS ')'
+                | ID '(' opt_args ')'
                 {
-                    // $$ = new FunctionCallNode($1, $3);
-                    std::cout << "[PARSER]: VAL -> ID ( ARGS )" << std::endl;
+                    std::cout << "[PARSER]: val -> ID ( opt_args )" << std::endl;
+                    $$ = new frontend::parser::FunctionCallNode($1, $3);
                 }
-                | INPUT_CALL
+                | input_call
                 {
-                    std::cout << "[PARSER]: VAL -> INPUT_CALL" << std::endl;
+                    std::cout << "[PARSER]: val -> input_call" << std::endl;
                 }
-                | ID OBJ_ACCESSORS
+                | obj_access
                 {
-                    std::cout << "[PARSER]: VAL -> ID OBJ_ACCESSORS" << std::endl;
+                    std::cout << "[PARSER]: val -> obj_access" << std::endl;
+                }
+                | obj_access '(' opt_args ')'
+                {
+                    std::cout << "[PARSER]: val -> obj_access ( opt_args )" << std::endl;
+                    $$ = new frontend::parser::MethodCallNode($1, std::move($3));
                 }
 ;
 
-LITERAL         : INT_VAL
+literal         : INT_VAL
                 {
-                    // $$ = new LiteralNode(Token::INT_VAL, $1);
                     std::cout << "[PARSER]: INT_VAL" << std::endl;
+                    // $$ = new frontend::parser::LiteralNode(Token::INT_VAL, $1);
                 }
                 | FLOAT_VAL
                 {
                     std::cout << "[PARSER]: FLOAT_VAL" << std::endl;
-                //     $$ = new LiteralNode(Token::FLOAT_VAL, $1);
+                    // $$ = new frontend::parser::LiteralNode(Token::FLOAT_VAL, $1);
                 }
 ;
 
-ARGS            : EXTENDED_EXPR
+opt_args        : %empty
                 {
-                    // $$.clear();
-                    // $$.push_back($1);
+                    // auto-generate an empty vector
+                }
+                | args
+;
+
+args            : extended_expr
+                {
                     std::cout << "[PARSER]: ARG1" << std::endl;
+                    $$.push_back($1);
                 }
-                | ARGS ',' EXTENDED_EXPR
+                | args ',' extended_expr
                 {
-                    // $$ = $1;
-                    // $$.push_back($3);
                     std::cout << "[PARSER]: ARG2" << std::endl;
+                    $$ = $1;
+                    $$.push_back($3);
                 }
 ;
 
-OBJ_ACCESSORS       : OBJ_ACCESSORS COMPOSITE_ACCESS
-                    | COMPOSITE_ACCESS
+// arrays and structs access
+
+obj_access          : ID composite_access
+                    {
+                        $$ = $2;
+                        $$->SetObject($1);
+                    }
+                    | obj_access composite_access
+                    {
+                        $$ = $2;
+                        $$->SetObject($1);
+                    }
 ;
 
-COMPOSITE_ACCESS    : '.' ID
+composite_access    : '.' ID
                     {
-                        std::cout << "[PARSER]: COMPOSITE_ACCESS -> . ID" << std::endl;
+                        std::cout << "[PARSER]: composite_access -> . ID" << std::endl;
+                        $$ = new frontend::parser::AttributeAccessNode(nullptr, $2);
                     }
-                    | '[' EXPR ']'
+                    | '[' expr ']'
                     {
-                        std::cout << "[PARSER]: COMPOSITE_ACCESS -> [ EXPR ]" << std::endl;
+                        std::cout << "[PARSER]: composite_access -> [ expr ]" << std::endl;
+                        $$ = new frontend::parser::SequenceAccessNode(nullptr, $2);
                     }
 ;
 
@@ -558,81 +630,88 @@ COMPOSITE_ACCESS    : '.' ID
 
 // TODO(dslynko): specify semantic meaning of integer arguments in `output` and `input`
 
-INPUT_CALL      : SINGLE_INPUT_CALL
-                | SEQ_INPUT_CALL
+input_call      : single_input_call
+                | seq_input_call
 ;
 
-SINGLE_INPUT_CALL   : INPUT '(' INT_VAL ')'
+single_input_call   : INPUT '(' INT_VAL ')'
                     {
-                        std::cout << "[PARSER]: SINGLE_INPUT_CALL -> INPUT ( INT_VAL )" << std::endl;
-                    }
-;
-
-SEQ_INPUT_CALL  : INPUT '(' INT_VAL DOUBLE_DOT INT_VAL ')'
-                {
-                    std::cout << "[PARSER]: SEQ_INPUT_CALL -> INPUT ( INT_VAL DOUBLE_DOT INT_VAL )" << std::endl;
-                }
-;
-
-TYPED_INPUT_CALL    : SINGLE_INPUT_CALL ':' PRIMITIVE
-                    {
-                        std::cout << "[PARSER]: TYPED_INPUT_CALL -> SINGLE_INPUT_CALL : PRIMITIVE" << std::endl;
-                    }
-                    | SEQ_INPUT_CALL ':' PRIMITIVE_SEQ_TYPE
-                    {
-                        std::cout << "[PARSER]: TYPED_INPUT_CALL -> SEQ_INPUT_CALL : PRIMITIVE_SEQ_TYPE" << std::endl;
+                        std::cout << "[PARSER]: single_input_call -> INPUT ( INT_VAL )" << std::endl;
+                        $$ = new frontend::parser::SingleInputCallNode($3);
                     }
 ;
 
-PRIMITIVE_SEQ_TYPE  : PRIMITIVE '[' INT_VAL ']'
+seq_input_call      : INPUT '(' INT_VAL DOUBLE_DOT INT_VAL ')'
                     {
-                        std::cout << "[PARSER] PRIMITIVE [ INT_VAL ]" << std::endl;
-                    //     $$ = new SequenceTypeNode(AggregateType::ARRAY, $1, $3);
-                    }
-                    | VECTOR '<' PRIMITIVE ',' INT_VAL '>'
-                    {
-                        std::cout << "[PARSER] VECTOR < ARG_TYPE , INT_VAL >" << std::endl;
-                    //     $$ = new SequenceTypeNode(AggregateType::VECTOR, $3, $5);
+                        std::cout << "[PARSER]: seq_input_call -> INPUT ( INT_VAL DOUBLE_DOT INT_VAL )" << std::endl;
+                        $$ = new frontend::parser::SequencedInputCallNode($3, $5);
                     }
 ;
 
-GLUE_CALL           : GLUE '(' ARGS ')'
+typed_input_call    : single_input_call ':' primitive
                     {
-                        std::cout << "[PARSER] GLUE_CALL" << std::endl;
+                        std::cout << "[PARSER]: typed_input_call -> single_input_call : primitive" << std::endl;
+                        $$ = $1;
+                        $$->SetReturnType($3);
+                    }
+                    | seq_input_call ':' primitive_seq_type
+                    {
+                        std::cout << "[PARSER]: typed_input_call -> seq_input_call : primitive_seq_type" << std::endl;
+                        $$ = $1;
+                        $$->SetReturnType($3);
                     }
 ;
 
-NAMED_GLUE_CALL     : GLUE '(' SPEC_GLUE_ARGS ')'
+primitive_seq_type  : primitive '[' INT_VAL ']'
                     {
-                        std::cout << "[PARSER] NAMED_GLUE_CALL" << std::endl;
+                        std::cout << "[PARSER] primitive [ INT_VAL ]" << std::endl;
+                        $$ = new frontend::parser::SequenceTypeNode(AggregateType::ARRAY, $1, $3);
+                    }
+                    | VECTOR '<' primitive ',' INT_VAL '>'
+                    {
+                        std::cout << "[PARSER] VECTOR < arg_type , INT_VAL >" << std::endl;
+                        $$ = new frontend::parser::SequenceTypeNode(AggregateType::VECTOR, $3, $5);
                     }
 ;
 
-SPEC_GLUE_ARGS      : SINGLE_GLUE_ARG
+glue_call           : GLUE '(' args ')'
                     {
-                        std::cout << "[PARSER] SINGLE_GLUE_ARG" << std::endl;
-                    }
-                    | SPEC_GLUE_ARGS ',' SINGLE_GLUE_ARG
-                    {
-                        std::cout << "[PARSER] SPEC_GLUE_ARGS , SINGLE_GLUE_ARG" << std::endl;
+                        std::cout << "[PARSER] glue_call" << std::endl;
+                        $$ = new frontend::parser::GlueCallNode(std::move($3));
                     }
 ;
 
-SINGLE_GLUE_ARG     : EXTENDED_EXPR ':' ID
+named_glue_call     : GLUE '(' spec_glue_args ')'
                     {
-                        std::cout << "[PARSER] SINGLE_GLUE_ARG -> EXTENDED_EXPR : ID" << std::endl;
+                        std::cout << "[PARSER] named_glue_call" << std::endl;
+                        $$ = new frontend::parser::GlueCallNode(std::move($3));
+                    }
+;
+
+spec_glue_args      : single_glue_arg
+                    {
+                        std::cout << "[PARSER] single_glue_arg" << std::endl;
+                        $$.first.push_back($1.first);
+                        $$.second.push_back($1.second);
+                    }
+                    | spec_glue_args ',' single_glue_arg
+                    {
+                        std::cout << "[PARSER] spec_glue_args , single_glue_arg" << std::endl;
+                        $$ = $1;
+                        $$.first.push_back($1.first);
+                        $$.second.push_back($1.second);
+                    }
+;
+
+single_glue_arg     : extended_expr ':' ID
+                    {
+                        std::cout << "[PARSER] single_glue_arg -> extended_expr : ID" << std::endl;
+                        $$ = {$1, $3};
                     }
 ;
 
 %%
 
-void yyerror(const char *s) {
-    std::cerr << s << ", line " << yylineno << std::endl;
-    exit(1);
-}
-
-main(int argc, char **argv)
-{
-    yyin = fopen(argv[1], "r");
-    yyparse();
+void parser::Parser::error(const location_type &loc, const std::string &message) {
+    std::cerr << "Error: " << message << " at " << loc << "\n";
 }

@@ -2,33 +2,37 @@
 #define PARASL_LITERAL_NODE_H_
 
 #include "ExpressionNode.h"
+#include <sstream>
 #include <string>
+#include "../../lexer/Token.h"
 // #include "../parser.tab.h"
 
 
-namespace lexer {
+namespace frontend::parser {
+template <typename T>
+concept Arithmetic = std::is_arithmetic<T>::value;
+
+template <Arithmetic T>
 class LiteralNode : public ExpressionNode {
 public:
-    LiteralNode(int type, const char *value)
-        : ExpressionNode(), type(type), value{value}
-    {
-        // auto numType = static_cast<int>(type);
-        // ASSERT(numType >= static_cast<int>(Token::STRING)
-        //     && numType < static_cast<int>(Token::INVALID_TOKEN));
+    LiteralNode(yytokentype type, T &&val) : ExpressionNode(), type{type}, value{val} {
+        auto numType = static_cast<int>(type);
+        ASSERT(numType >= static_cast<int>(yytokentype::STRING)
+               && numType < static_cast<int>(yytokentype::INVALID_TOKEN));
     }
-    ~LiteralNode() noexcept = default;
+    ~LiteralNode() noexcept override = default;
 
-    int GetTokenType() const {
+    yytokentype GetTokenType() const {
         return type;
     }
-    const std::string &GetValue() const {
+    T GetValue() const {
         return value;
     }
 
 private:
-    int type;
-    std::string value;
+    yytokentype type;
+    T value;
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_LITERAL_NODE_H_

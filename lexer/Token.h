@@ -1,7 +1,7 @@
 #ifndef PARASL_TOKENS_H_
 #define PARASL_TOKENS_H_
 
-// namespace lexer {
+// namespace frontend::lexer {
 enum yytokentype {
     EQ = 258,
     NE,
@@ -43,6 +43,6 @@ enum yytokentype {
     RIGHT_CURLY_PARENTHESIS,
     INVALID_TOKEN
 };
-// }   // namespace lexer
+// }   // namespace frontend::lexer
 
 #endif  // PARASL_TOKENS_H_

@@ -13,4 +13,4 @@ struct Value {
     BasicTypes type;
 };
 
-#endif
+#endif  // RUNTIME_TYPES_H_INCLUDED

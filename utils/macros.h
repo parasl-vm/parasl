@@ -22,7 +22,7 @@
 
 #define DEBUG_OBJ_DUMP(obj) static_cast<void>(0)
 
-#endif
+#endif  // DEBUG
 
 #define WARNING(mess) /* utils::PrintWarning((mess), __FILE__, __LINE__, __FUNCTION__) */
 #define UNREACHABLE(mess) /* utils::AssertionFail(mess, __FILE__, __LINE__, __FUNCTION__) */

@@ -1,17 +1,18 @@
 #ifndef PARASL_FOR_STATEMENT_NODE_H_
 #define PARASL_FOR_STATEMENT_NODE_H_
 
+#include "CompoundStatementNode.h"
 #include "ExpressionNode.h"
 #include "IDNode.h"
 #include "StatementNode.h"
 
 
-namespace lexer {
+namespace frontend::parser {
 class IterationRange : public StatementNode {
 public:
     IterationRange(IDNode *variable)
         : StatementNode(), variable(variable) {}
-    ~IterationRange() noexcept = default;
+    ~IterationRange() noexcept override = default;
 
     IDNode *GetIterationVariable() {
         return variable;
@@ -46,14 +47,16 @@ private:
 
 class ForStatementNode : public ExpressionNode {
 public:
-    ForStatementNode(IterationRange *iterRange, StatementNode *internal)
-        : ExpressionNode(), iterRange(iterRange), internal(internal) {}
-    ~ForStatementNode() noexcept = default;
+    ForStatementNode(IterationRange *iterRange, CompoundStatementNode *loopBody)
+        : ExpressionNode(), iterRange(iterRange), body(loopBody) {}
+    ForStatementNode(IterationRange *iterRange, StatementNode *stmt)
+        : ExpressionNode(), iterRange(iterRange), body(new CompoundStatementNode(stmt)) {}
+    ~ForStatementNode() noexcept override = default;
 
 private:
     IterationRange *iterRange = nullptr;
-    StatementNode *internal = nullptr;
+    CompoundStatementNode *body = nullptr;
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_FOR_STATEMENT_NODE_H_

@@ -5,7 +5,7 @@
 // #include <span>
 
 
-namespace lexer {
+namespace frontend::parser {
 class ASTNode {
 public:
     ASTNode() = default;
@@ -25,6 +25,6 @@ public:
 private:
     ASTNode *parent = nullptr;
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_AST_NODE_H_

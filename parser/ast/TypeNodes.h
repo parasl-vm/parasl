@@ -1,16 +1,17 @@
-#ifndef PARASL_TYPE_NODE_H_
-#define PARASL_TYPE_NODE_H_
+#ifndef PARASL_TYPE_NODES_H_
+#define PARASL_TYPE_NODES_H_
 
 #include "ASTNode.h"
-#include "IDNode.h"
 #include <optional>
 #include <vector>
 
 
-namespace lexer {
+namespace frontend::parser {
+class IDNode;
+
 class TypeNode : public ASTNode {
 public:
-    ~TypeNode() noexcept = default;
+    ~TypeNode() noexcept override = default;
 };
 
 enum class PrimitiveType {
@@ -44,7 +45,7 @@ public:
             typeSize = typeSz.value();
             ASSERT(typeSize > 0);
         } else {
-            typeSize = lexer::getDefaultPrimitiveSize(type);
+            typeSize = getDefaultPrimitiveSize(type);
         }
     }
 
@@ -71,6 +72,7 @@ private:
 
 struct FunctionArgument {
     TypeNode *type;
+    // TODO(dslynko): consider replacing IDNode with std::string, as it only represents the name
     IDNode *arg;
 };
 
@@ -80,13 +82,25 @@ public:
         : returnType(returnType) {}
 
     void AddArgument(TypeNode *type, IDNode *arg) {
-        // args.emplace_back(type, arg);
+        args.emplace_back(type, arg);
     }
 
 private:
     TypeNode *returnType = nullptr;
     std::vector<FunctionArgument> args;
 };
-}   // namespace lexer
 
-#endif  // PARASL_TYPE_NODE_H_
+class StructTypeNode : public TypeNode {
+public:
+    StructTypeNode(std::vector<FunctionArgument> &&attrs) : attributes{std::move(attrs)} {}
+
+    void AddArgument(TypeNode *type, IDNode *arg) {
+        attributes.emplace_back(type, arg);
+    }
+
+private:
+    std::vector<FunctionArgument> attributes;
+};
+}   // namespace frontend::parser
+
+#endif  // PARASL_TYPE_NODES_H_

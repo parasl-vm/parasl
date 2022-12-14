@@ -5,10 +5,10 @@
 // #include "../parser.tab.h"
 
 
-namespace lexer {
+namespace frontend::parser {
 class DeclarationNode : public ExpressionNode {
 public:
-    ~DeclarationNode() noexcept = default;
+    ~DeclarationNode() noexcept override = default;
 };
 
 class FunctionDeclNode : public DeclarationNode {
@@ -16,6 +16,6 @@ class FunctionDeclNode : public DeclarationNode {
 
 class VariableDeclNode : public DeclarationNode {
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_DECLARATION_NODE_H_
