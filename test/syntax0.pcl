@@ -11,7 +11,9 @@ else {
     output(0, 55);
 }
 
-if (__var__ <= 0)
+// a comment
+
+if (__var__ <= 0)   // another comment
     output(0, v0);
 else
     output(0, 88);

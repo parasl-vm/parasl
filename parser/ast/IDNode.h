@@ -3,22 +3,37 @@
 
 #include "ExpressionNode.h"
 #include <string>
+#include "TypeNodes.h"
 
 
-namespace lexer {
+namespace frontend::parser {
 class IDNode : public ExpressionNode {
 public:
-    IDNode(const char *value)
-        : ExpressionNode(), value{value} {}
-    ~IDNode() noexcept = default;
+    IDNode(const char *value, TypeNode *type = nullptr)
+        : ExpressionNode(), value{value}, valueType{type} {}
+    ~IDNode() noexcept override = default;
 
-    const std::string &GetValue() const {
+    const char *GetValue() const {
         return value;
     }
+    void SetValue(const char *newValue) {
+        value = newValue;
+    }
 
-private:
-    std::string value;
+    TypeNode *GetType() {
+        return valueType;
+    }
+    const TypeNode *GetType() const {
+        return valueType;
+    }
+    void SetType(TypeNode *type) {
+        valueType = type;
+    }
+
+protected:
+    const char *value;
+    TypeNode *valueType;
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_ID_NODE_H_

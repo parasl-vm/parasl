@@ -5,12 +5,12 @@
 #include "StatementNode.h"
 
 
-namespace lexer {
+namespace frontend::parser {
 class ReturnStatementNode : public StatementNode {
 public:
     ReturnStatementNode(ExpressionNode *returnValue = nullptr)
         : StatementNode(), returnValue(returnValue) {}
-    ~ReturnStatementNode() noexcept = default;
+    ~ReturnStatementNode() noexcept override = default;
 
     ExpressionNode *GetReturnValue() {
         return returnValue;
@@ -22,6 +22,6 @@ public:
 private:
     ExpressionNode *returnValue;
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_RETURN_STATEMENT_NODE_H_

@@ -1,35 +1,30 @@
-  /* %option c++ */
-%option yylineno
-%option noyywrap
-
 %{
     #include <string>
     #include <iostream>
     #include <vector>
     #include <fstream>
-    #include <cstdlib>
-
-    // #include "Token.h"
-
-    #include "../parser/parser.tab.h"
+    #include <sstream>
+    #include "Token.h"
 
     #define TOKEN(NAME) return yytokentype::NAME
 
-    // void yyerror(const char *s);
+    // This will track current scanner location.
+    // Action is called when length of the token is known.
+    #define YY_USER_ACTION m_driver.increaseLocation(yyleng);
 
-    std::vector<int> tokens; // not needed
-    // yyFlexLexer* my_lexer;
+    /* using "token" to make the returns for the tokens shorter to type */
+    // using token = yytokentype;
 
-    // union DataType
-    // {
-    //     int64_t int_value;
-    //     std::string string_value;
-    // };
-
-    // DataType yylval;
+    int yyterminate();
 %}
 
-/* TODO(dslynko): no leading zeros */
+%option nodefault
+%option c++
+%option noyywrap
+%option yyclass="Lexer"
+%option prefix="ParaSL_"
+
+
 DIGIT       [0-9]
 INT_VAL     [+-]?{DIGIT}+
 FLOAT_VAL   [+-]?{DIGIT}+"."{DIGIT}+([eE][+-]?{DIGIT}+)?
@@ -48,9 +43,7 @@ DOUBLE_DOT  [.][.]
 LAYER       layer
 INPUT       input
 OUTPUT      output
-/* REPEAT      repeat */
 GLUE        glue
-/* BIND        bind */
 IF          if
 ELSE        else
 WHILE       while
@@ -65,19 +58,12 @@ VECTOR      vector
 
 %%
 
-{WHITESPACE}        /* eat up whitespace */
-  /* [/][/]["].*\n        eat up comments? */
+{WHITESPACE}        { /* eat up whitespace */ }
+"//".*              { /* eat up comments */ }
 
-[+-/*<>\[\]{}();:=,]    { return *yytext; }
-
-  /* [(]                       { tokens.push_back(TOKEN(LEFT_ROUND_PARENTHESIS)); } */
-  /* [)]                       { tokens.push_back(TOKEN(RIGHT_ROUND_PARENTHESIS)); } */
-  /* [;]                       { tokens.push_back(TOKEN(SEMICOLON)); } */
-  /* [:]                       { tokens.push_back(TOKEN(COLON)); } */
-  /* [=]                       { tokens.push_back(TOKEN(ASSIGN)); } */
-  /* [,]                       { tokens.push_back(TOKEN(COMMA)); } */
-  /* {REPEAT} { std::cout << "[LEXER]: REPEAT" << std::endl; TOKEN(REPEAT); } */
-  /* {BIND} { std::cout << "[LEXER]: BIND" << std::endl; TOKEN(BIND); } */
+[+-/*<>\[\]{}();:=,] {
+    return *yytext;
+}
 
 {EQ} {
     std::cout << "[LEXER]: EQ" << std::endl;
@@ -167,25 +153,33 @@ VECTOR      vector
 
 {INT_VAL} {
     std::cout << "[LEXER]: INT_VAL: " << yytext << std::endl;
-    lexer::LiteralNode* node = new lexer::LiteralNode(yytokentype::INT_VAL, yytext);
+    int64_t value = 0;
+    std::istringstream{yytext} >> value;
+    auto *node = new frontend::LiteralNode(yytokentype::INT_VAL, value);
+    return node;
     // yylval.literal_node_t = node;
     TOKEN(INT_VAL);
 }
 {FLOAT_VAL} {
     std::cout << "[LEXER]: FLOAT_VAL" << std::endl;
-    lexer::LiteralNode* node = new lexer::LiteralNode(yytokentype::FLOAT_VAL, yytext);
+    double value = 0;
+    std::istringstream{yytext} >> value;
+    auto *node = new frontend::LiteralNode(yytokentype::FLOAT_VAL, value);
+    return node;
     TOKEN(FLOAT_VAL);
 }
 
 {ID} {
     std::cout << "[LEXER]: ID: " << yytext << std::endl;
     lexer::IDNode* node = new lexer::IDNode(yytext);
+    return node;
     // yylval.id_node_t = node;
     TOKEN(ID);
 }
 
 {STRING} {
     std::cout << "[LEXER]: STRING: " << yytext << std::endl;
+    return std::string{yytext};
     TOKEN(STRING);
 }
 
@@ -193,25 +187,12 @@ VECTOR      vector
     std::cout << "[LEXER]: Token not found: " << yytext << "\n";
 }
 
+<<EOF>>     { return yyterminate(); }
+
 %%
 
-// void yyerror(const char *s)
-// {
-//     std::cout << s << "\n";
-// }
 
-// int main(int argc, char **argv)
-// {
-//     std::ifstream input(argv[1]);
-
-//     my_lexer = new yyFlexLexer(input, std::cout);
-//     while(my_lexer->yylex() != 0);
-
-//     for (auto item: tokens) {
-//         std::cout << item << " ";
-//     }
-//     std::cout << "\n";
-
-//     delete my_lexer;
-//     return 0;
-// }
+int yyterminate() {
+    std::cout << "Reached <EOF>" << std::endl;
+    return 0;
+}

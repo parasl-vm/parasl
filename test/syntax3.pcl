@@ -12,6 +12,7 @@ layer (0, "zero") {
     };
 
     struct1: { x: double, y: vector<double, 3>, method: () } = glue(var, _Arr, bind(func1, struct1.x));
+    struct1.method();
 }
 
 layer (1, "first") {

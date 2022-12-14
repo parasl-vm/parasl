@@ -4,11 +4,11 @@
 #include "ASTNode.h"
 
 
-namespace lexer {
+namespace frontend::parser {
 class StatementNode : public ASTNode {
 public:
-    ~StatementNode() noexcept = default;
+    ~StatementNode() noexcept override = default;
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_STATEMENT_NODE_H_

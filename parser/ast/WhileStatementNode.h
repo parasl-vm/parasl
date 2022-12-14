@@ -1,21 +1,24 @@
 #ifndef PARASL_WHILE_STATEMENT_NODE_H_
 #define PARASL_WHILE_STATEMENT_NODE_H_
 
+#include "CompoundStatementNode.h"
 #include "ExpressionNode.h"
 #include "StatementNode.h"
 
 
-namespace lexer {
+namespace frontend::parser {
 class WhileStatementNode : public ASTNode {
 public:
-    WhileStatementNode(ExpressionNode *condition, StatementNode *internal)
-        : ASTNode(), condition(condition), internal(internal) {}
-    ~WhileStatementNode() noexcept = default;
+    WhileStatementNode(ExpressionNode *condition, CompoundStatementNode *loopBody)
+        : ASTNode(), condition(condition), body(loopBody) {}
+    WhileStatementNode(ExpressionNode *condition, StatementNode *stmt)
+        : ASTNode(), condition(condition), body(new CompoundStatementNode(stmt)) {}
+    ~WhileStatementNode() noexcept override = default;
 
 private:
     ExpressionNode *condition = nullptr;
-    StatementNode *internal = nullptr;
+    CompoundStatementNode *body = nullptr;
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_WHILE_STATEMENT_NODE_H_

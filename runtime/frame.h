@@ -19,4 +19,4 @@ struct Frame {
     std::vector<Value> local_variables;
 };
 
-#endif
+#endif  // FRAME_H_INCLUDED

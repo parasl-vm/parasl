@@ -5,12 +5,12 @@
 #include "CompoundStatementNode.h"
 
 
-namespace lexer {
+namespace frontend::parser {
 class LayerNode : public ASTNode {
 public:
     LayerNode(size_t layerId, std::string layerName, CompoundStatementNode *stmts)
         : ASTNode(), layerId(layerId), layerName(layerName), stmts(stmts) {}
-    ~LayerNode() noexcept = default;
+    ~LayerNode() noexcept override = default;
 
     void AddStatement(StatementNode *stmt) {
         stmts->AddStatement(stmt);
@@ -21,6 +21,6 @@ private:
     std::string layerName;
     CompoundStatementNode *stmts;
 };
-}   // namespace lexer
+}   // namespace frontend::parser
 
 #endif  // PARASL_LAYER_NODE_H_
